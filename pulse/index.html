@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>生命脉冲 · 全球人口实时监测</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;500;700&family=Noto+Sans+SC:wght@300;400;700;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#000; --paper:#fff; --dim:rgba(255,255,255,.42);
+    --rise:#ffffff; --fall:#ff4d4d; --grow:#7dffa8;
+    --ease:cubic-bezier(0.23,1,0.32,1);
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{background:var(--ink)}
+  body{background:var(--ink);color:var(--paper);font-family:'Noto Sans SC',sans-serif;overflow-x:hidden;cursor:none}
+  ::selection{background:#fff;color:#000}
+  a{color:inherit;text-decoration:none;cursor:none}
+  .mono{font-family:'JetBrains Mono','Noto Sans SC',monospace}
+
+  /* ---------- 自定义光标 ---------- */
+  #cursor{position:fixed;top:0;left:0;width:64px;height:64px;margin:-32px 0 0 -32px;pointer-events:none;z-index:9999;transition:opacity .2s}
+  #cursor .ring{fill:none;stroke:#fff;stroke-width:1.5;transition:opacity .15s}
+  #cursor .dot{fill:#fff;opacity:0;transition:opacity .15s}
+  #cursor .lbl{font-family:'JetBrains Mono',monospace;font-size:8px;fill:#000;letter-spacing:.14em;opacity:0;transition:opacity .15s}
+  body.hovering #cursor .ring{opacity:0}
+  body.hovering #cursor .dot{opacity:1}
+  body.hovering #cursor .lbl{opacity:1}
+  @media (pointer:coarse){#cursor{display:none}body,a{cursor:auto}}
+
+  /* ---------- Gate ---------- */
+  #gate{position:fixed;inset:0;background:#000;z-index:900;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:42px;transition:opacity .9s var(--ease),transform .9s var(--ease)}
+  #gate.open{opacity:0;transform:scale(1.12);pointer-events:none}
+  #gate .g-title{font-weight:900;font-size:clamp(28px,5vw,56px);letter-spacing:.5em;text-indent:.5em}
+  #gate .g-sub{font-size:11px;letter-spacing:.42em;color:var(--dim)}
+  #gate .g-line{width:1px;height:56px;background:rgba(255,255,255,.25)}
+  #enter{position:relative;width:132px;height:132px;border-radius:50%;border:1px solid rgba(255,255,255,.85);background:transparent;color:#fff;font-family:'Noto Sans SC',sans-serif;font-size:13px;letter-spacing:.3em;text-indent:.3em;transition:transform .6s var(--ease),background .3s}
+  #enter::after{content:'';position:absolute;inset:-14px;border-radius:50%;border:1px solid rgba(255,255,255,.18);animation:orbit 3.2s linear infinite}
+  @keyframes orbit{from{transform:rotate(0) scale(1)}50%{transform:rotate(180deg) scale(1.06)}to{transform:rotate(360deg) scale(1)}}
+  #enter:hover{background:#fff;color:#000;transform:scale(1.07)}
+
+  /* ---------- 剧场层 ---------- */
+  #theater{position:relative;height:100vh;overflow:hidden}
+  #stage{position:absolute;inset:0}
+  #pulseGlow{position:absolute;left:50%;top:44%;width:60vmin;height:60vmin;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.10) 0%,rgba(255,77,77,.05) 45%,transparent 70%);pointer-events:none}
+  #pulseGlow.beat{animation:beat .55s ease-out}
+  @keyframes beat{0%{transform:translate(-50%,-50%) scale(.82);opacity:1}100%{transform:translate(-50%,-50%) scale(1.18);opacity:.35}}
+
+  .hud{position:absolute;z-index:10;transition:opacity .6s ease}
+  body.idle .hud{opacity:0}
+  #brand{top:34px;left:40px}
+  #backHome{position:fixed;top:38px;right:40px;z-index:60;font-size:9px;letter-spacing:.32em;color:var(--dim);text-decoration:none;transition:color .4s;opacity:.65}
+  #backHome:hover{color:#f6f3ef;opacity:1}
+  #brand .b0{font-size:8px;letter-spacing:.5em;color:var(--dim);margin-bottom:8px}
+  #brand .b1{font-weight:900;font-size:15px;letter-spacing:.34em}
+  #brand .b2{font-size:9px;letter-spacing:.3em;color:var(--dim);margin-top:6px}
+  #ticker{top:38px;left:50%;transform:translateX(-50%);display:flex;gap:26px;font-size:10px;letter-spacing:.22em}
+  #ticker a{color:var(--dim);transition:color .3s}
+  #ticker a.on,#ticker a:hover{color:#fff}
+  #ticker a .neg{color:var(--fall)}
+  #ticker a .pos{color:var(--grow)}
+  #scrollHint{bottom:34px;left:50%;transform:translateX(-50%);font-size:9px;letter-spacing:.4em;color:var(--dim);display:flex;flex-direction:column;align-items:center;gap:10px}
+  #scrollHint .vline{width:1px;height:44px;background:linear-gradient(#fff,transparent);animation:drip 2.2s var(--ease) infinite}
+  @keyframes drip{0%{transform:scaleY(0);transform-origin:top}45%{transform:scaleY(1);transform-origin:top}55%{transform:scaleY(1);transform-origin:bottom}100%{transform:scaleY(0);transform-origin:bottom}}
+
+  #core{position:absolute;left:50%;top:44%;transform:translate(-50%,-50%);text-align:center;z-index:5;pointer-events:none}
+  #core .k-label{font-size:10px;letter-spacing:.5em;color:var(--dim);margin-bottom:18px}
+  #globalNum{font-size:clamp(40px,7.2vw,104px);font-weight:300;letter-spacing:.02em;line-height:1;font-variant-numeric:tabular-nums}
+  #core .k-sub{margin-top:22px;font-size:12px;letter-spacing:.28em;color:var(--dim)}
+  #core .k-sub b{font-weight:500}
+  .pos-c{color:var(--grow)} .neg-c{color:var(--fall)}
+
+  #vitals{position:absolute;bottom:96px;left:0;right:0;display:flex;justify-content:center;gap:min(9vw,130px);z-index:5;pointer-events:none}
+  .vital{text-align:center}
+  .vital .v-num{font-size:clamp(18px,2.4vw,30px);font-weight:500;font-variant-numeric:tabular-nums}
+  .vital .v-cap{margin-top:8px;font-size:9px;letter-spacing:.34em;color:var(--dim)}
+  .vital.birth .v-num{color:#fff}
+  .vital.death .v-num{color:var(--fall)}
+  .vital.net .v-num{color:var(--grow)}
+
+  /* 文字行揭示 */
+  .rv{overflow:hidden}
+  .rv>span{display:block;transform:translate3d(0,120%,0);transition:transform .9s var(--ease)}
+  body.ready .rv>span{transform:translate3d(0,0,0)}
+  .rv.d1>span{transition-delay:.135s}.rv.d2>span{transition-delay:.27s}.rv.d3>span{transition-delay:.405s}.rv.d4>span{transition-delay:.54s}
+
+  /* ---------- 数据层 ---------- */
+  #dataLayer{position:relative;background:#000;padding:14vh 6vw 16vh;border-top:1px solid rgba(255,255,255,.12)}
+  .sec-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:7vh}
+  .sec-head h2{font-weight:900;font-size:clamp(24px,3.4vw,44px);letter-spacing:.12em}
+  .sec-head .en{font-size:10px;letter-spacing:.4em;color:var(--dim)}
+  .rank{display:flex;flex-direction:column;gap:3.2vh}
+  .rrow{display:grid;grid-template-columns:52px 120px 1fr 190px;align-items:center;gap:20px;padding:14px 0;border-bottom:1px solid rgba(255,255,255,.07);transition:background .3s}
+  .rrow:hover{background:rgba(255,255,255,.03)}
+  .rrow .rk{font-size:11px;color:var(--dim)}
+  .rrow .nm{font-weight:700;font-size:16px;letter-spacing:.1em}
+  .rrow .bar{height:3px;background:rgba(255,255,255,.1);position:relative}
+  .rrow .bar i{position:absolute;left:0;top:0;bottom:0;transition:width 1.4s var(--ease)}
+  .rrow .pp{text-align:right;font-size:15px;font-variant-numeric:tabular-nums;color:rgba(255,255,255,.85)}
+  .rrow .pp small{display:block;font-size:9px;letter-spacing:.2em;color:var(--dim);margin-top:3px}
+  .grid8{margin-top:14vh;display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.12)}
+  .cell{background:#000;padding:34px 28px 30px;position:relative;transition:background .4s}
+  .cell:hover{background:#0a0a0a}
+  .cell .c-en{font-size:9px;letter-spacing:.36em;color:var(--dim)}
+  .cell .c-nm{font-weight:900;font-size:22px;margin-top:8px;letter-spacing:.14em}
+  .cell .c-pop{margin-top:22px;font-size:21px;font-variant-numeric:tabular-nums}
+  .cell .c-today{margin-top:12px;font-size:11px;line-height:2;color:rgba(255,255,255,.55)}
+  .cell .c-status{margin-top:18px;font-size:9px;letter-spacing:.24em;color:#fbbf24}
+  .cell::after{content:'';position:absolute;left:28px;top:0;width:26px;height:2px;background:var(--cc,#fff)}
+  footer{padding:60px 6vw;border-top:1px solid rgba(255,255,255,.12);font-size:10px;letter-spacing:.2em;color:var(--dim);display:flex;justify-content:space-between;flex-wrap:wrap;gap:16px}
+</style>
+</head>
+<body>
+
+<svg id="cursor" viewBox="0 0 64 64"><circle class="ring" cx="32" cy="32" r="17"/><circle class="dot" cx="32" cy="32" r="17"/><text class="lbl" x="32" y="35" text-anchor="middle">VIEW</text></svg>
+
+<div id="gate">
+  <div class="g-title">生命脉冲</div>
+  <div class="g-sub mono">EVERY HEARTBEAT IS DATA · 每一次跳动都是数据</div>
+  <div class="g-line"></div>
+  <button id="enter">进入监测</button>
+</div>
+
+<section id="theater">
+  <canvas id="stage"></canvas>
+  <div id="pulseGlow"></div>
+
+  <div class="hud" id="brand">
+    <div class="b0 mono">列侬工作室 出品</div>
+    <div class="b1">生命脉冲</div>
+    <div class="b2 mono">LIFE PULSE — GLOBAL POPULATION MONITOR</div>
+  </div>
+  <a id="backHome" class="hud mono" href="../index.html">‹ 返回总览</a>
+  <nav class="hud mono" id="ticker"></nav>
+
+  <div id="core">
+    <div class="k-label rv"><span>此刻，地球上共有</span></div>
+    <div class="mono rv d1"><span id="globalNum">—</span></div>
+    <div class="k-sub rv d2"><span>今日全球净增 <b id="globalNet" class="pos-c mono">—</b> 人 · 数字为模型推演值</span></div>
+  </div>
+
+  <div id="vitals">
+    <div class="vital birth rv d2"><span class="v-num mono" id="vBirth">—</span><span style="display:block" class="v-cap">今日诞生</span></div>
+    <div class="vital death rv d3"><span class="v-num mono" id="vDeath">—</span><span style="display:block" class="v-cap">今日逝去</span></div>
+    <div class="vital net rv d4"><span class="v-num mono" id="vNet">—</span><span style="display:block" class="v-cap">净变化</span></div>
+  </div>
+
+  <div class="hud" id="scrollHint"><span>SCROLL · 查看国家数据</span><div class="vline"></div></div>
+</section>
+
+<section id="dataLayer">
+  <div class="sec-head"><h2>国家排行</h2><span class="en mono">LEADERBOARD · LIVE</span></div>
+  <div class="rank" id="rank"></div>
+
+  <div class="sec-head" style="margin-top:16vh"><h2>监测名单</h2><span class="en mono">8 COUNTRIES · 点击进入详情</span></div>
+  <div class="grid8" id="grid8"></div>
+</section>
+
+<footer>
+  <span style="color:rgba(255,255,255,.75)">© 列侬工作室出品 · 开放学术研究 · 禁止商业使用 · 保留所有权利</span>
+  <span>数据状态：部分国家为模型预测值，已与官方年度数据硬校准</span>
+  <span class="mono">SOURCES: 各国统计局 / UN WPP 2024 / WORLD BANK</span>
+</footer>
+
+<script src="../shared/data.js"></script>
+<script>
+/* ---------- 光标 ---------- */
+const cursor=document.getElementById('cursor');let mx=innerWidth/2,my=innerHeight/2,cx=mx,cy=my;
+addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY;bodyIdle();});
+(function loopCursor(){cx+=(mx-cx)*.18;cy+=(my-cy)*.18;cursor.style.transform=`translate(${cx}px,${cy}px)`;requestAnimationFrame(loopCursor);})();
+document.addEventListener('mouseover',e=>{document.body.classList.toggle('hovering',!!e.target.closest('a,button'));});
+
+/* ---------- 闲置隐藏 UI ---------- */
+let idleT;function bodyIdle(){document.body.classList.remove('idle');clearTimeout(idleT);idleT=setTimeout(()=>document.body.classList.add('idle'),4000);}
+bodyIdle();
+
+/* ---------- Gate ---------- */
+document.getElementById('enter').addEventListener('click',()=>{
+  document.getElementById('gate').classList.add('open');
+  setTimeout(()=>document.body.classList.add('ready'),350);
+});
+
+/* ---------- 粒子剧场 ---------- */
+const stage=document.getElementById('stage'),ctx=stage.getContext('2d');
+let W,H;function resize(){W=stage.width=innerWidth*devicePixelRatio;H=stage.height=innerHeight*devicePixelRatio;stage.style.width=innerWidth+'px';stage.style.height=innerHeight+'px';}
+resize();addEventListener('resize',resize);
+const g=MockAPI.globalClock(),ps=g.perSecond();
+const parts=[];
+let bAcc=0,dAcc=0;
+function spawn(dt){
+  bAcc+=ps.birth*dt; dAcc+=ps.death*dt;
+  while(bAcc>6){bAcc-=6;parts.push({t:'b',x:Math.random()*W,y:H+10,vy:-(0.25+Math.random()*0.5)*devicePixelRatio*60,vx:(Math.random()-.5)*.3*devicePixelRatio,life:1,r:(1+Math.random()*1.6)*devicePixelRatio});}
+  while(dAcc>6){dAcc-=6;parts.push({t:'d',x:Math.random()*W,y:-10,vy:(0.22+Math.random()*0.45)*devicePixelRatio*60,vx:(Math.random()-.5)*.3*devicePixelRatio,life:1,r:(1+Math.random()*1.4)*devicePixelRatio});}
+}
+let last=performance.now();
+function frame(now){
+  const dt=Math.min(.05,(now-last)/1000);last=now;
+  ctx.clearRect(0,0,W,H);spawn(dt);
+  for(let i=parts.length-1;i>=0;i--){
+    const p=parts[i];p.x+=p.vx*dt*60;p.y+=p.vy*dt;p.life-=dt*.10;
+    if(p.life<=0||p.y<-30||p.y>H+30){parts.splice(i,1);continue;}
+    const a=p.life*(p.t==='b'?.85:.55);
+    if(p.t==='b'){ctx.shadowBlur=10*devicePixelRatio;ctx.shadowColor='rgba(255,255,255,.8)';ctx.fillStyle=`rgba(255,255,255,${a})`;}
+    else{ctx.shadowBlur=6*devicePixelRatio;ctx.shadowColor='rgba(255,77,77,.7)';ctx.fillStyle=`rgba(255,77,77,${a})`;}
+    ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,7);ctx.fill();ctx.shadowBlur=0;
+  }
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+/* ---------- 心跳（跟随净变化节奏） ---------- */
+const glow=document.getElementById('pulseGlow');
+setInterval(()=>{glow.classList.remove('beat');void glow.offsetWidth;glow.classList.add('beat');},Math.max(900,2600/(Math.abs(ps.net)*10+1)));
+
+/* ---------- 实时数字 ---------- */
+const U=PopUtil;
+function tick(){
+  const t=g.today();
+  document.getElementById('globalNum').textContent=U.fmt(g.current());
+  document.getElementById('globalNet').textContent=U.fmtSigned(Math.floor(t.net));
+  document.getElementById('vBirth').textContent=U.fmt(Math.floor(t.birth));
+  document.getElementById('vDeath').textContent=U.fmt(Math.floor(t.death));
+  const vn=document.getElementById('vNet');vn.textContent=U.fmtSigned(Math.floor(t.net));
+  vn.parentElement.querySelector('.v-num').style.color=t.net>=0?'var(--grow)':'var(--fall)';
+}
+tick();setInterval(tick,500);
+
+/* ---------- 国家 ticker ---------- */
+const tickNav=document.getElementById('ticker');
+MockAPI.order.forEach(code=>{
+  const c=MockAPI.meta(code),d=MockAPI.clock(code).perDay();
+  const a=document.createElement('a');a.href=`country.html?c=${code}`;
+  a.innerHTML=`${c.en} <span class="${d.net>=0?'pos':'neg'}">${U.fmtSigned(Math.round(d.net))}/日</span>`;
+  tickNav.appendChild(a);
+});
+
+/* ---------- 排行榜 ---------- */
+const rankEl=document.getElementById('rank');
+function renderRank(){
+  const lb=MockAPI.leaderboard(),max=lb.countries[0].population;
+  rankEl.innerHTML=lb.countries.map(c=>{
+    const meta=MockAPI.meta(c.code),day=MockAPI.clock(c.code).perDay();
+    return `<a class="rrow" href="country.html?c=${c.code}">
+      <span class="rk mono">${String(c.rank).padStart(2,'0')}</span>
+      <span class="nm">${c.name}</span>
+      <span class="bar"><i style="width:0%;background:${meta.color}" data-w="${(c.population/max*100).toFixed(1)}"></i></span>
+      <span class="pp mono">${U.fmt(c.population)}<small class="${day.net>=0?'pos-c':'neg-c'}">${U.fmtSigned(Math.round(day.net))} / 日</small></span>
+    </a>`;
+  }).join('');
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    rankEl.querySelectorAll('.bar i').forEach(i=>i.style.width=i.dataset.w+'%');
+  }));
+}
+renderRank();setInterval(renderRank,5000);
+
+/* ---------- 国家网格 ---------- */
+document.getElementById('grid8').innerHTML=MockAPI.order.map(code=>{
+  const c=MockAPI.meta(code),cur=MockAPI.current(code);
+  return `<a class="cell" style="--cc:${c.color}" href="country.html?c=${code}">
+    <div class="c-en mono">${c.en}</div>
+    <div class="c-nm">${c.name}</div>
+    <div class="c-pop mono" data-code="${code}">${U.fmt(cur.population)}</div>
+    <div class="c-today">今日诞生 ${U.fmt(cur.today_birth)}<br>今日逝去 ${U.fmt(cur.today_death)}<br>净变化 <b class="${cur.today_net>=0?'pos-c':'neg-c'}">${U.fmtSigned(cur.today_net)}</b></div>
+    <div class="c-status">${U.statusLabel(cur.data_status)} · 精度 ${c.precision}/5</div>
+  </a>`;
+}).join('');
+setInterval(()=>{
+  document.querySelectorAll('.c-pop').forEach(el=>{
+    el.textContent=U.fmt(MockAPI.current(el.dataset.code).population);
+  });
+},1000);
+</script>
+</body>
+</html>

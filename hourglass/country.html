@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>沙漏纪元 · 国家详情</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;500&family=Noto+Serif+SC:wght@400;600;900&family=Noto+Sans+SC:wght@300;400;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<style>
+  :root{--bg:#141210;--bg2:#1b1815;--sand:#ffca34;--cream:#f6f3ef;--dim:#8a8175;--drain:#ff5a4d;--fill:#7fd08a;--warn:#e8b64c}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--bg);color:var(--cream);font-family:'Noto Sans SC',sans-serif;overflow-x:hidden;
+    background-image:radial-gradient(ellipse 90% 60% at 50% -10%,#211d18 0%,var(--bg) 60%)}
+  ::selection{background:var(--sand);color:#141210}
+  a{color:inherit;text-decoration:none}
+  .mono{font-family:'JetBrains Mono','Noto Sans SC',monospace}
+  .serif{font-family:'Noto Serif SC',serif}
+  .neg{color:var(--drain)}.pos{color:var(--fill)}
+
+  header{position:fixed;top:0;left:0;right:0;z-index:50;display:flex;justify-content:space-between;align-items:center;padding:24px 4vw;mix-blend-mode:difference}
+  header a{font-size:10px;letter-spacing:.4em;color:rgba(246,243,239,.6)}
+  header a:hover{color:var(--cream)}
+  header .tag{font-size:9px;letter-spacing:.4em;color:rgba(246,243,239,.5)}
+  .studioTag{font-size:8px;letter-spacing:.5em;color:rgba(246,243,239,.5)}
+  header .hd-r{display:flex;align-items:center;gap:26px}
+  .chanSwitch{font-size:9px!important;letter-spacing:.32em!important;color:rgba(246,243,239,.75)!important;border:1px solid rgba(246,243,239,.55)!important;border-radius:999px;padding:9px 20px;transition:all .3s;white-space:nowrap;background:rgba(0,0,0,.25)}
+  .chanSwitch:hover{color:#fff!important;border-color:#fff!important}
+  @media (max-width:1180px){header .tag{display:none}}
+
+  /* 英雄区：翻转沙漏 */
+  #hero{min-height:100vh;display:grid;grid-template-columns:minmax(280px,40%) 1fr;align-items:center;padding:13vh 6vw 9vh;gap:4vw}
+  @media (max-width:900px){#hero{grid-template-columns:1fr;justify-items:center}}
+  #hgWrap{perspective:1200px;display:flex;justify-content:center}
+  #hg{width:min(280px,56vw);height:auto;filter:drop-shadow(0 0 44px rgba(255,202,52,.14));
+    transform:rotateX(180deg);transition:transform 1.4s cubic-bezier(.7,0,.2,1)}
+  body.ready #hg{transform:rotateX(0)}
+  #hInfo .k{font-size:10px;letter-spacing:.5em;color:var(--dim)}
+  #hInfo h1{font-family:'Noto Serif SC',serif;font-weight:900;font-size:clamp(38px,5.4vw,72px);letter-spacing:.22em;margin:16px 0 8px}
+  #hInfo .en{font-size:10px;letter-spacing:.5em;color:var(--dim);margin-bottom:28px}
+  #hPop{font-size:clamp(32px,4.2vw,58px);font-weight:300;font-variant-numeric:tabular-nums}
+  #hRate{margin-top:14px;font-size:13px;letter-spacing:.12em;color:var(--dim)}
+  #hRate b{font-weight:500;font-variant-numeric:tabular-nums}
+  #hStatus{margin-top:24px;display:inline-block;font-size:10px;letter-spacing:.28em;color:var(--warn);border:1px solid rgba(232,182,76,.4);padding:8px 16px}
+
+  section{padding:11vh 6vw;border-top:1px solid rgba(246,243,239,.1)}
+  .sec-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5vh}
+  .sec-head h2{font-family:'Noto Serif SC',serif;font-weight:900;font-size:clamp(19px,2.5vw,32px);letter-spacing:.18em}
+  .sec-head .en{font-size:9px;letter-spacing:.4em;color:var(--dim)}
+  .sec-sub{font-size:11px;color:var(--dim);letter-spacing:.1em;margin:-3vh 0 5vh;line-height:2}
+
+  #pyramid{width:100%;height:56vh;min-height:400px}
+  #trend{width:100%;height:48vh;min-height:340px}
+
+  .vitals{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1px;background:rgba(246,243,239,.1);border:1px solid rgba(246,243,239,.1)}
+  .vt{background:var(--bg);padding:28px 24px}
+  .vt .k{font-size:9px;letter-spacing:.3em;color:var(--dim)}
+  .vt .v{margin-top:12px;font-size:20px;font-variant-numeric:tabular-nums;font-weight:300}
+  .vt .s{margin-top:9px;font-size:10px;color:#7a7264;line-height:1.8}
+  .vt.warn .v{color:var(--warn)}
+
+  .src{max-width:760px;font-size:12px;line-height:2.4;color:#9b9284;letter-spacing:.06em}
+  .src b{color:var(--cream);font-weight:500}
+  .src .warn{color:var(--warn)}
+
+  footer{padding:40px 6vw;border-top:1px solid rgba(246,243,239,.1);font-size:10px;letter-spacing:.2em;color:var(--dim);display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px}
+  footer .credit{color:rgba(246,243,239,.85);font-size:11px;letter-spacing:.14em}
+  footer{padding-bottom:calc(40px + 44px)}
+
+  /* ---------- 电讯慢带 ---------- */
+  #wireband{position:fixed;left:0;right:0;bottom:0;z-index:50;display:flex;align-items:center;gap:14px;
+    padding:0 6vw;height:34px;background:rgba(10,10,8,.82);backdrop-filter:blur(8px);
+    border-top:1px solid rgba(246,243,239,.08);font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.22em}
+  #wireband .wb-label{flex-shrink:0;color:var(--warn);display:flex;align-items:center;gap:7px}
+  #wireband .wb-label i{width:5px;height:5px;border-radius:50%;background:var(--warn);animation:wbPulse 2s ease-in-out infinite}
+  @keyframes wbPulse{0%,100%{opacity:1}50%{opacity:.25}}
+  #wireband .wb-item{color:rgba(246,243,239,.55);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    transition:opacity 1.2s ease,transform 1.2s ease}
+  #wireband .wb-item.out{opacity:0;transform:translateY(6px)}
+</style>
+</head>
+<body data-sound="hourglass">
+
+<header>
+  <span style="display:flex;align-items:baseline;gap:18px">
+    <a href="index.html" class="mono">← 返回沙漏阵列</a>
+    <span class="studioTag">列侬工作室 出品</span>
+  </span>
+  <span class="hd-r">
+    <a class="chanSwitch mono" id="chanSwitch" href="../obituary/country.html">⇄ 切换到 人口纪事报</a>
+    <span class="tag mono">HOURGLASS EPOCH · COUNTRY</span>
+  </span>
+</header>
+
+<section id="hero">
+  <div id="hgWrap"><canvas id="hg" width="560" height="920"></canvas></div>
+  <div id="hInfo">
+    <div class="k mono" id="hK">—</div>
+    <h1 class="serif" id="hNm">—</h1>
+    <div class="en mono" id="hEn">—</div>
+    <div class="mono" id="hPop">—</div>
+    <div id="hRate">—</div>
+    <div><span id="hStatus">—</span></div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><h2>沙粒落定之后</h2><span class="en mono">AGE PYRAMID · 年龄金字塔</span></div>
+  <p class="sec-sub">当沙漏静止，沙粒堆积成这个国家的年龄结构。底部越窄，未来的沙越少。</p>
+  <div id="pyramid"></div>
+</section>
+
+<section>
+  <div class="sec-head"><h2>关键体征</h2><span class="en mono">VITALS</span></div>
+  <div class="vitals" id="vitals"></div>
+</section>
+
+<section>
+  <div class="sec-head"><h2>时间的方向</h2><span class="en mono">2016 — 2030 · 历史 / 预测 / UN WPP</span></div>
+  <div id="trend"></div>
+</section>
+
+<section>
+  <div class="sec-head"><h2>来源与声明</h2><span class="en mono">PROVENANCE</span></div>
+  <p class="src" id="srcNote"></p>
+</section>
+
+<footer>
+  <span class="credit">© 列侬工作室出品 · 开放学术研究 · 禁止商业使用 · 保留所有权利</span>
+  <span class="mono" id="fTs">—</span>
+</footer>
+
+<div id="wireband"><span class="wb-label"><i></i>电讯</span><span class="wb-item" id="wbItem"></span></div>
+
+<script src="../shared/data.js"></script>
+<script src="../shared/sound.js"></script>
+<script>
+const U=PopUtil;
+
+/* 电讯慢带 */
+MockAPI.news().then(list=>{
+  const el=document.getElementById('wbItem');let i=0;
+  const show=()=>{el.classList.add('out');
+    setTimeout(()=>{el.textContent=list[i].text;el.classList.remove('out');i=(i+1)%list.length;},1200);};
+  el.textContent=list[0].text;i=1;setInterval(show,7000);
+});
+
+const code=new URLSearchParams(location.search).get('c')||'CHN';
+const meta=MockAPI.meta(code)||MockAPI.meta('CHN');
+const clock=MockAPI.clock(meta.code);
+document.getElementById('chanSwitch').href='../obituary/country.html?c='+meta.code;
+document.title='沙漏纪元 · '+meta.name;
+
+/* ---------- 沙漏（与主面板同绘制器，静态框架+沙流） ---------- */
+(function(){
+  const canvas=document.getElementById('hg'),ctx=canvas.getContext('2d');
+  const W=canvas.width,H=canvas.height,cx=W/2,neckY=H/2,topY=H*0.08,botY=H*0.92,halfW=W*0.34,neckW=W*0.035;
+  const day=clock.perDay(),draining=day.net<0;
+  const sandCol=draining?'#ff5a4d':'#7fd08a';
+  function glassPath(){ctx.beginPath();
+    ctx.moveTo(cx-halfW,topY);ctx.quadraticCurveTo(cx-halfW,neckY-H*0.14,cx-neckW,neckY);
+    ctx.quadraticCurveTo(cx-halfW,neckY+H*0.14,cx-halfW,botY);ctx.lineTo(cx+halfW,botY);
+    ctx.quadraticCurveTo(cx+halfW,neckY+H*0.14,cx+neckW,neckY);
+    ctx.quadraticCurveTo(cx+halfW,neckY-H*0.14,cx+halfW,topY);ctx.closePath();}
+  function halfAt(y){if(y<neckY){const t=(neckY-y)/(neckY-topY);return neckW+(halfW-neckW)*Math.pow(t,0.9);}
+    const t=(y-neckY)/(botY-neckY);return neckW+(halfW-neckW)*Math.pow(t,0.9);}
+  let lvl=0.6,parts=[],last=performance.now();
+  function draw(now){const dt=Math.min(.05,(now-last)/1000);last=now;
+    lvl-=(draining?1:-1)*dt*0.05;if(lvl<0.1)lvl=0.75;if(lvl>0.9)lvl=0.15;
+    ctx.clearRect(0,0,W,H);
+    ctx.strokeStyle='#3a3227';ctx.lineWidth=W*0.045;ctx.lineCap='round';
+    ctx.beginPath();ctx.moveTo(cx-halfW-W*0.05,topY-H*0.012);ctx.lineTo(cx+halfW+W*0.05,topY-H*0.012);
+    ctx.moveTo(cx-halfW-W*0.05,botY+H*0.012);ctx.lineTo(cx+halfW+W*0.05,botY+H*0.012);ctx.stroke();
+    glassPath();ctx.save();ctx.clip();
+    ctx.fillStyle='rgba(246,243,239,0.035)';ctx.fillRect(0,0,W,H);
+    const uy=neckY-lvl*(neckY-topY)*0.92;
+    ctx.fillStyle=sandCol;ctx.globalAlpha=.85;
+    ctx.beginPath();ctx.moveTo(cx-halfAt(uy),uy);ctx.lineTo(cx+halfAt(uy),uy);
+    ctx.quadraticCurveTo(cx+neckW*1.4,neckY-2,cx+neckW,neckY);ctx.lineTo(cx-neckW,neckY);
+    ctx.quadraticCurveTo(cx-neckW*1.4,neckY-2,cx-halfAt(uy),uy);ctx.fill();
+    const pile=0.75-lvl+0.06,py=botY-pile*(botY-neckY)*0.9;
+    ctx.beginPath();ctx.moveTo(cx-halfAt(py),py);
+    ctx.quadraticCurveTo(cx,py-Math.min(halfAt(py),H*0.04),cx+halfAt(py),py);
+    ctx.lineTo(cx+halfW,botY);ctx.lineTo(cx-halfW,botY);ctx.closePath();ctx.fill();
+    ctx.globalAlpha=1;ctx.restore();
+    glassPath();ctx.strokeStyle='rgba(246,243,239,.5)';ctx.lineWidth=1.5;ctx.stroke();
+    if(Math.random()<0.5)parts.push({x:cx+(Math.random()-.5)*neckW*1.4,y:neckY,v:(draining?1:-1)*(2+Math.random()*2)});
+    ctx.fillStyle=sandCol;
+    for(let i=parts.length-1;i>=0;i--){const p=parts[i];p.y+=p.v;p.v*=1.03;
+      if((draining&&p.y>py)||(!draining&&p.y<uy)){parts.splice(i,1);continue;}
+      ctx.globalAlpha=.9;ctx.fillRect(p.x,p.y,1.8,3.4);ctx.globalAlpha=1;}
+    requestAnimationFrame(draw);}
+  requestAnimationFrame(draw);
+})();
+setTimeout(()=>document.body.classList.add('ready'),150);
+
+/* ---------- 英雄区 ---------- */
+const day0=clock.perDay(),draining=day0.net<0;
+document.getElementById('hK').textContent=draining?'这只沙漏正在流逝':'这只沙漏正在积聚';
+document.getElementById('hK').style.color=draining?'var(--drain)':'var(--fill)';
+document.getElementById('hNm').textContent=meta.name;
+document.getElementById('hEn').textContent=meta.en+' · '+meta.code;
+const cur=MockAPI.current(meta.code);
+document.getElementById('hStatus').textContent=U.statusLabel(cur.data_status)+' · 下次官方校准 '+cur.next_official_update;
+function tick(){
+  const c=MockAPI.current(meta.code);
+  document.getElementById('hPop').textContent=U.fmt(c.population);
+  document.getElementById('hRate').innerHTML=`今日诞生 <b>${U.fmt(c.today_birth)}</b> · 今日逝去 <b class="neg">${U.fmt(c.today_death)}</b> · 净 <b class="${c.today_net>=0?'pos':'neg'}">${U.fmtSigned(c.today_net)}</b>`;
+  document.getElementById('fTs').textContent='UPDATED '+new Date().toLocaleTimeString('zh-CN');
+}
+tick();setInterval(tick,500);
+
+/* ---------- 年龄金字塔（近似年龄结构，原型示意） ---------- */
+const PYR={
+  CHN:[11.5,12.5,13.5,15.5,14.5,15.0,11.5,4.5,1.5],
+  IND:[18.0,18.5,17.0,15.0,12.0,9.5,6.0,3.0,1.0],
+  USA:[12.0,13.0,13.5,13.5,12.0,12.5,11.5,8.0,4.0],
+  JPN:[8.4,9.0,10.4,12.2,13.0,12.6,12.4,11.0,11.0],
+  DEU:[9.0,9.5,11.0,12.0,12.5,14.0,13.0,11.0,8.0],
+  FRA:[11.5,12.0,12.0,12.5,12.0,12.5,12.0,9.5,6.0],
+  GBR:[11.5,12.0,12.5,13.0,12.0,12.5,11.5,9.0,6.0],
+  KOR:[7.5,9.5,13.0,14.5,15.5,15.0,12.5,8.0,4.5]
+};
+const bands=['0-9','10-19','20-29','30-39','40-49','50-59','60-69','70-79','80+'];
+const share=PYR[meta.code]||PYR.CHN;
+const male=share.map((s,i)=>-(s*(i<6?0.515:0.45)));
+const female=share.map((s,i)=>s*(i<6?0.485:0.55));
+const pyr=echarts.init(document.getElementById('pyramid'));
+pyr.setOption({
+  backgroundColor:'transparent',
+  grid:{left:70,right:70,top:20,bottom:30},
+  tooltip:{trigger:'axis',backgroundColor:'#1b1815',borderColor:'#3a3227',textStyle:{color:'#f6f3ef'},
+    formatter:p=>`${p[0].axisValue}岁<br>${p.map(i=>`${i.seriesName}：${Math.abs(i.value).toFixed(1)}%`).join('<br>')}`},
+  xAxis:{type:'value',axisLabel:{color:'#8a8175',fontFamily:'JetBrains Mono',formatter:v=>Math.abs(v)+'%'},splitLine:{lineStyle:{color:'rgba(246,243,239,.07)'}}},
+  yAxis:{type:'category',data:bands,axisLabel:{color:'#c9c1b2',fontFamily:'JetBrains Mono'},axisLine:{lineStyle:{color:'#3a3227'}}},
+  series:[
+    {name:'男',type:'bar',stack:'a',data:male,barWidth:'62%',itemStyle:{color:'rgba(255,202,52,.75)',borderRadius:[3,0,0,3]},animationDelay:i=>i*70},
+    {name:'女',type:'bar',stack:'a',data:female,itemStyle:{color:'rgba(246,243,239,.5)',borderRadius:[0,3,3,0]},animationDelay:i=>i*70}
+  ],
+  animationEasing:'cubicOut',animationDuration:1100
+});
+
+/* ---------- 体征 ---------- */
+const vitals=[
+  ['当前人口',U.fmt(cur.population),'基准日 '+meta.baseDate.slice(0,10)+' 起推演',false],
+  ['日均净变化',U.fmtSigned(Math.round(day0.net))+' 人',draining?'沙漏净流失':'沙漏净积聚',draining],
+  ['年出生 / 死亡',U.fmtWan(meta.annualBirth)+' / '+U.fmtWan(meta.annualDeath),'最近完整统计年度',false],
+  ['自然增长率',meta.growthRate+' ‰',draining?'死亡交叉':'自然增长',draining],
+  ['数据精度',meta.precision+' / 5',meta.freq,false],
+  ['置信区间',U.fmtWan(meta.confidence[0])+' — '+U.fmtWan(meta.confidence[1]),'当前推演不确定性',true]
+];
+document.getElementById('vitals').innerHTML=vitals.map(v=>
+  `<div class="vt ${v[3]?'warn':''}"><div class="k mono">${v[0]}</div><div class="v mono">${v[1]}</div><div class="s">${v[2]}</div></div>`).join('');
+
+/* ---------- 趋势 ---------- */
+const h=MockAPI.history(meta.code);
+const yrs=[...h.historical.map(r=>r.year),...h.forecast.map(r=>r.year)];
+const hist=h.historical.map(r=>r.population/1e8).concat(h.forecast.map(()=>null));
+const fc=h.historical.map(()=>null).concat(h.forecast.map(r=>r.population/1e8));
+fc[h.historical.length-1]=h.historical[h.historical.length-1].population/1e8;
+const un=new Array(h.historical.length).fill(null).concat(h.un_wpp.map(r=>r.population/1e8));
+un[h.historical.length-1]=h.historical[h.historical.length-1].population/1e8;
+const trend=echarts.init(document.getElementById('trend'));
+trend.setOption({
+  backgroundColor:'transparent',
+  grid:{left:64,right:30,top:26,bottom:36},
+  tooltip:{trigger:'axis',backgroundColor:'#1b1815',borderColor:'#3a3227',textStyle:{color:'#f6f3ef',fontFamily:'JetBrains Mono'}},
+  xAxis:{type:'category',data:yrs,axisLabel:{color:'#8a8175',fontFamily:'JetBrains Mono'},axisLine:{lineStyle:{color:'#3a3227'}}},
+  yAxis:{type:'value',scale:true,axisLabel:{color:'#8a8175',fontFamily:'JetBrains Mono',formatter:'{value}亿'},splitLine:{lineStyle:{color:'rgba(246,243,239,.07)'}}},
+  series:[
+    {name:'官方历史',type:'line',data:hist,symbol:'circle',symbolSize:4,lineStyle:{color:'#f6f3ef',width:2},itemStyle:{color:'#f6f3ef'}},
+    {name:'自研模型',type:'line',data:fc,symbol:'none',lineStyle:{color:'#ffca34',width:2,type:'dashed'},areaStyle:{color:'#ffca34',opacity:.07}},
+    {name:'UN WPP',type:'line',data:un,symbol:'none',lineStyle:{color:'rgba(246,243,239,.3)',width:1.4,type:'dotted'}}
+  ]
+});
+addEventListener('resize',()=>{pyr.resize();trend.resize();});
+
+/* ---------- 来源 ---------- */
+document.getElementById('srcNote').innerHTML=
+  `沙粒速率由 <b>${meta.source}</b>（${meta.freq}）校准，叠加自研短期预测模型按秒推演。${meta.note}。<br>
+  年龄金字塔为基于公开年龄结构的近似示意。<span class="warn">标注「预测」的数字并非官方统计</span>；每年官方数据发布后强制对齐。交叉验证：UN WPP 2024、世界银行。`;
+</script>
+</body>
+</html>

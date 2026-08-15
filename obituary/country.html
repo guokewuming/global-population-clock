@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>人口纪事报 · 国家详版</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Noto+Serif+SC:wght@400;600;900&family=Noto+Sans+SC:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<style>
+  :root{--paper:#f6f3ef;--ink:#1c1c02;--red:#ff4141;--rule:rgba(28,28,2,.85);--faint:rgba(28,28,2,.16);--amber:#b07c1f}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--paper);color:var(--ink);font-family:'Noto Serif SC',serif;overflow-x:hidden;
+    background-image:radial-gradient(rgba(28,28,2,.03) 1px,transparent 1px);background-size:5px 5px}
+  ::selection{background:var(--ink);color:var(--paper)}
+  a{color:inherit;text-decoration:none}
+  .mono{font-family:'JetBrains Mono','Noto Sans SC',monospace}
+  .sans{font-family:'Noto Sans SC',sans-serif}
+  .neg{color:var(--red)}
+
+  #masthead{border-bottom:3px double var(--rule);padding:18px 4vw 14px;display:flex;justify-content:space-between;align-items:center}
+  #masthead .lg{font-weight:900;font-size:18px;letter-spacing:.3em}
+  #masthead a{font-size:10px;letter-spacing:.3em;border-bottom:1px solid var(--ink);padding-bottom:2px}
+  #masthead .studio{display:block;font-size:9px;letter-spacing:.4em;color:rgba(28,28,2,.5);margin-top:6px;font-weight:400}
+  #chanStrip{display:flex;align-items:center;justify-content:center;gap:16px;background:var(--ink);color:var(--paper);
+    padding:11px 4vw;font-family:'Noto Sans SC',sans-serif;font-size:10.5px;letter-spacing:.24em;transition:background .3s}
+  #chanStrip b{font-weight:600;color:#ffca34}
+  #chanStrip .cs-dot{width:6px;height:6px;border-radius:50%;background:var(--red);animation:csPulse 1.6s ease-in-out infinite}
+  @keyframes csPulse{0%,100%{opacity:1}50%{opacity:.3}}
+  #chanStrip .cs-arr{color:rgba(246,243,239,.6);transition:transform .3s}
+  #chanStrip:hover{background:#000}
+  #chanStrip:hover .cs-arr{transform:translateX(6px)}
+
+  /* ---------- 即时电讯 ---------- */
+  #wire{border-bottom:1px solid var(--rule);display:flex;align-items:stretch;overflow:hidden}
+  #wire .w-label{flex-shrink:0;display:flex;align-items:center;gap:8px;padding:10px 18px;border-right:1px solid var(--rule);font-size:10px;letter-spacing:.3em;font-weight:700;white-space:nowrap}
+  #wire .w-label i{width:6px;height:6px;border-radius:50%;background:var(--red);animation:csPulse 1.6s ease-in-out infinite}
+  #wire .w-track{flex:1;overflow:hidden;display:flex;align-items:center}
+  #wire .w-inner{display:flex;white-space:nowrap;animation:wireScroll 60s linear infinite;font-size:11px;letter-spacing:.1em}
+  #wire .w-inner:hover{animation-play-state:paused}
+  #wire .w-item{padding:0 34px;color:rgba(28,28,2,.8)}
+  #wire .w-item b{color:var(--red);font-weight:700;margin-right:10px;font-size:9px;letter-spacing:.24em;border:1px solid var(--red);padding:2px 6px;vertical-align:1px}
+  @keyframes wireScroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+  #masthead .dt{font-size:10px;letter-spacing:.2em;color:rgba(28,28,2,.55)}
+
+  /* 头条 */
+  #lead{padding:8vh 4vw 6vh;border-bottom:1px solid var(--rule)}
+  #lead .kicker{font-size:10px;letter-spacing:.4em;color:var(--red);margin-bottom:2.5vh}
+  #lead h1{font-weight:900;font-size:clamp(30px,5.4vw,78px);line-height:1.12;letter-spacing:-.01em;max-width:20em}
+  #lead h1 .mono{font-weight:400}
+  #lead .byline{margin-top:4vh;display:flex;gap:3vw;font-size:10px;letter-spacing:.24em;color:rgba(28,28,2,.55);flex-wrap:wrap}
+  #lead .big-pop{margin-top:4vh;font-size:clamp(40px,7vw,96px);font-variant-numeric:tabular-nums;font-weight:400}
+  #lead .big-pop small{display:block;font-size:10px;letter-spacing:.3em;color:rgba(28,28,2,.5);margin-top:8px}
+
+  .secTitle{position:sticky;top:0;z-index:20;background:var(--paper);border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);padding:12px 4vw;display:flex;justify-content:space-between;align-items:baseline}
+  .secTitle h2{font-weight:900;font-size:clamp(17px,2.4vw,28px);letter-spacing:.2em}
+  .secTitle .no{font-size:11px;letter-spacing:.3em;color:rgba(28,28,2,.5)}
+
+  /* 三栏事实 */
+  #facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));border-bottom:1px solid var(--rule)}
+  .fact{padding:4.5vh 3vw;border-right:1px solid var(--faint)}
+  .fact:last-child{border-right:none}
+  .fact .k{font-size:10px;letter-spacing:.3em;color:rgba(28,28,2,.55)}
+  .fact .v{margin-top:14px;font-size:clamp(18px,1.9vw,26px);font-variant-numeric:tabular-nums;white-space:nowrap}
+  .fact .s{margin-top:10px;font-size:11px;line-height:2;color:rgba(28,28,2,.6)}
+  .fact.warn .v{color:var(--amber)}
+
+  /* 图表 */
+  #chartSec{padding:6vh 4vw 7vh;border-bottom:1px solid var(--rule)}
+  #chart{width:100%;height:50vh;min-height:360px}
+  #chartSec .note{margin-top:2.5vh;font-size:11px;line-height:2.2;color:rgba(28,28,2,.6);letter-spacing:.04em;max-width:680px}
+  #chartSec .note b{color:var(--ink)}
+  #chartSec .note .ed{background:rgba(255,65,65,.12);padding:1px 5px}
+
+  /* 正文 */
+  #story{padding:7vh 4vw;display:grid;grid-template-columns:1fr minmax(0,640px) 1fr}
+  @media (max-width:900px){#story{grid-template-columns:1fr}}
+  #story .body{grid-column:2;font-size:14px;line-height:2.6;text-align:justify;letter-spacing:.03em}
+  #story .body::first-letter{font-size:56px;font-weight:900;float:left;line-height:.9;padding:5px 12px 0 0}
+  #story .pull{margin:4vh 0;padding:3vh 0;border-top:2px solid var(--ink);border-bottom:2px solid var(--ink);font-weight:900;font-size:clamp(18px,2.4vw,26px);line-height:1.7;letter-spacing:.04em}
+  #story .pull .neg{font-weight:900}
+  #story .fn{display:inline-flex;width:16px;height:16px;border:1px solid var(--ink);border-radius:50%;font-size:9px;align-items:center;justify-content:center;vertical-align:super;margin-left:2px}
+
+  /* 数据表 */
+  #tableSec{padding:0 4vw 8vh}
+  table{width:100%;border-collapse:collapse;font-size:12px}
+  th{font-size:10px;letter-spacing:.24em;color:rgba(28,28,2,.55);text-align:left;padding:10px 6px;border-bottom:2px solid var(--ink)}
+  td{padding:11px 6px;border-bottom:1px solid var(--faint);font-variant-numeric:tabular-nums}
+  td:first-child{font-weight:600}
+  tr.fc td{color:var(--amber)}
+  tr.fc td:first-child::after{content:'·预测';font-size:9px;margin-left:6px;letter-spacing:.1em}
+  .tbl-wrap{max-width:760px;margin:0 auto}
+
+  footer{padding:30px 4vw;border-top:3px double var(--rule);font-size:10px;letter-spacing:.2em;color:rgba(28,28,2,.5);display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px}
+  footer .credit{color:rgba(28,28,2,.9);font-size:11px;letter-spacing:.14em;font-weight:600}
+</style>
+</head>
+<body data-sound="ledger">
+
+<a id="chanStrip" href="../hourglass/country.html">
+  <span class="cs-dot"></span>
+  <span>换一种方式读这份数据 — <b>沙漏纪元 · 装置艺术版</b></span>
+  <span class="cs-arr">进入 →</span>
+</a>
+<div id="masthead">
+  <span class="lg">人口纪事报<small class="studio sans">列侬工作室 出品</small></span>
+  <span class="dt mono" id="mDate">—</span>
+  <a href="index.html" class="sans">← 返回今日版面</a>
+</div>
+
+<div id="wire" class="sans">
+  <div class="w-label"><i></i>即时电讯</div>
+  <div class="w-track"><div class="w-inner" id="wireInner"></div></div>
+</div>
+
+<section id="lead">
+  <div class="kicker sans" id="kicker">国家详版 · COUNTRY FILE</div>
+  <h1 id="headline">—</h1>
+  <div class="big-pop mono"><span id="pop">—</span><small>当前人口 · 实时推演 <span id="popFn"></span></small></div>
+  <div class="byline sans"><span id="bySrc">—</span><span id="byFreq">—</span><span id="byNext">—</span></div>
+</section>
+
+<div class="secTitle"><h2>关键事实</h2><span class="no mono">FACTS ①</span></div>
+<section id="facts"></section>
+
+<div class="secTitle"><h2>十年轨迹 · 五年推演</h2><span class="no mono">CHART ②</span></div>
+<section id="chartSec">
+  <div id="chart"></div>
+  <p class="note">实线为官方公布历史数据；虚线为自研模型中性情景<span class="ed">编辑注：预测</span>，阴影为置信区间示意；点线为 UN WPP 2024 中方案对照。预测值每年官方数据发布后强制回代校准。</p>
+</section>
+
+<div class="secTitle"><h2>报道</h2><span class="no mono">DISPATCH ③</span></div>
+<section id="story"><div class="body" id="storyBody"></div></section>
+
+<div class="secTitle"><h2>逐年数据</h2><span class="no mono">TABLE ④</span></div>
+<section id="tableSec"><div class="tbl-wrap"><table id="tbl"></table></div></section>
+
+<footer>
+  <span class="credit">© 列侬工作室出品 · 开放学术研究 · 禁止商业使用 · 保留所有权利</span>
+  <span>预测内容均已标注</span>
+  <span class="mono" id="fTs">—</span>
+</footer>
+
+<script src="../shared/data.js"></script>
+<script src="../shared/sound.js"></script>
+<script>
+const U=PopUtil;
+const code=new URLSearchParams(location.search).get('c')||'CHN';
+document.getElementById('chanStrip').href='../hourglass/country.html?c='+code;
+
+/* 即时电讯 */
+MockAPI.news().then(list=>{
+  const html=list.map(n=>`<span class="w-item"><b>${n.tag}</b>${n.text}</span>`).join('');
+  document.getElementById('wireInner').innerHTML=html+html;
+});
+const meta=MockAPI.meta(code)||MockAPI.meta('CHN');
+const clock=MockAPI.clock(meta.code);
+document.title='人口纪事报 · '+meta.name+'详版';
+document.getElementById('mDate').textContent=new Date().toLocaleDateString('zh-CN',{year:'numeric',month:'long',day:'numeric'});
+
+const neg=meta.growthRate<0;
+document.getElementById('kicker').textContent='国家详版 · '+(neg?'人口减少通道':'人口增长通道');
+document.getElementById('headline').innerHTML=
+  `${meta.name}：${neg?`每天净减 <span class="mono neg" id="hlNet">—</span> 人`: `每天净增 <span class="mono" id="hlNet">—</span> 人`}，${neg?'沙仍在流走':'增长仍在继续'}`;
+document.getElementById('bySrc').textContent='来源 · '+meta.source;
+document.getElementById('byFreq').textContent='频率 · '+meta.freq;
+document.getElementById('byNext').textContent='下次官方校准 · '+meta.nextOfficialUpdate;
+document.getElementById('popFn').textContent=meta.dataStatus==='model_prediction'?'（模型预测）':'（官方近实时）';
+
+function tick(){
+  const c=MockAPI.current(meta.code);
+  document.getElementById('pop').textContent=U.fmt(c.population);
+  document.getElementById('hlNet').textContent=U.fmt(Math.abs(Math.round(clock.perDay().net)));
+  document.getElementById('fTs').textContent='UPDATED '+new Date().toLocaleTimeString('zh-CN');
+}
+tick();setInterval(tick,500);
+
+/* 关键事实 */
+const day=clock.perDay(),cur=MockAPI.current(meta.code);
+const facts=[
+  ['今日诞生',U.fmt(cur.today_birth),'自今日 00:00 起',false],
+  ['今日逝去',U.fmt(cur.today_death),'自今日 00:00 起',true],
+  ['今日净变化',U.fmtSigned(cur.today_net),'诞生 − 逝去',neg],
+  ['自然增长率',meta.growthRate+' ‰',neg?'死亡交叉':'自然增长',neg],
+  ['数据精度',meta.precision+' / 5',meta.freq,false],
+  ['置信区间',(meta.confidence[0]/1e8).toFixed(2)+' — '+(meta.confidence[1]/1e8).toFixed(2),'单位：亿 · 推演值不确定性',true]
+];
+document.getElementById('facts').innerHTML=facts.map(f=>
+  `<div class="fact ${f[3]?'warn':''}"><div class="k sans">${f[0]}</div><div class="v mono">${f[1]}</div><div class="s">${f[2]}</div></div>`).join('');
+
+/* 图表 */
+const h=MockAPI.history(meta.code);
+const yrs=[...h.historical.map(r=>r.year),...h.forecast.map(r=>r.year)];
+const hist=h.historical.map(r=>r.population/1e8).concat(h.forecast.map(()=>null));
+const fc=h.historical.map(()=>null).concat(h.forecast.map(r=>r.population/1e8));
+fc[h.historical.length-1]=h.historical[h.historical.length-1].population/1e8;
+const un=new Array(h.historical.length).fill(null).concat(h.un_wpp.map(r=>r.population/1e8));
+un[h.historical.length-1]=h.historical[h.historical.length-1].population/1e8;
+const chart=echarts.init(document.getElementById('chart'));
+chart.setOption({
+  backgroundColor:'transparent',
+  grid:{left:60,right:26,top:26,bottom:36},
+  tooltip:{trigger:'axis',backgroundColor:'#f6f3ef',borderColor:'#1c1c02',textStyle:{color:'#1c1c02',fontFamily:'JetBrains Mono'}},
+  xAxis:{type:'category',data:yrs,axisLabel:{color:'rgba(28,28,2,.6)',fontFamily:'JetBrains Mono'},axisLine:{lineStyle:{color:'#1c1c02'}}},
+  yAxis:{type:'value',scale:true,axisLabel:{color:'rgba(28,28,2,.6)',fontFamily:'JetBrains Mono',formatter:'{value}亿'},splitLine:{lineStyle:{color:'rgba(28,28,2,.1)'}}},
+  series:[
+    {name:'官方历史',type:'line',data:hist,symbol:'circle',symbolSize:5,lineStyle:{color:'#1c1c02',width:2},itemStyle:{color:'#1c1c02'}},
+    {name:'自研模型预测',type:'line',data:fc,symbol:'none',lineStyle:{color:'#ff4141',width:2,type:'dashed'},itemStyle:{color:'#ff4141'},areaStyle:{color:'#ff4141',opacity:.06}},
+    {name:'UN WPP 2024',type:'line',data:un,symbol:'none',lineStyle:{color:'rgba(28,28,2,.35)',width:1.4,type:'dotted'}}
+  ]
+});
+addEventListener('resize',()=>chart.resize());
+
+/* 报道正文 */
+const BODY={
+  CHN:`${meta.name}正在经历有记录以来最深刻的人口转向。2025 年末常住人口 14.0489 亿，出生 792 万对死亡 1131 万，自然增长率 -2.41‰<span class="fn">1</span>。更深层的压力藏在未来：2024 年结婚登记仅 610.6 万对，同比下降 20.5%，为 1980 年以来最低——婚姻登记领先出生约九到十个月，这意味着明天的出生数字几乎已被今天写好。育龄妇女每年减少 300 至 400 万人，而 1962-73 年婴儿潮一代正步入 60-70 岁的高死亡年龄段。`,
+  IND:`${meta.name}是这份名单里唯一仍在高速生长的国家。年净增约 1410 万人，相当于每天新增一座小型城市<span class="fn">3</span>。但其总和生育率已跌破 2.1 的更替水平——当前的增长是巨大人口惯性的余晖。由于印度缺乏月度出生死亡数据，本页推演主要依据 UN WPP 2024 与年度抽样调查，精度等级 2/5。`,
+  USA:`${meta.name}的自然增长正在收窄。CDC 国家卫生统计中心的季度临时数据显示：2025 年第一季度出生 869,334 人、死亡 829,935 人，季度自然净增不足 4 万<span class="fn">1</span>。BEA 的月度人口估计提供了更密的校准节奏，使美国的推演精度达到 4/5——介于月度数据国家与纯年度数据国家之间。`,
+  JPN:`${meta.name}是全世界老龄化最深的国家：65 岁以上人口占 29.4%，全球最高<span class="fn">1</span>。总务省的月度人口动态统计显示，年死亡约 160 万对出生约 70 万，每年净减近 90 万，连续第 16 年。月度数据让日本的「人口时钟」成为本监测网中精度最高的一只（5/5）——每月都有真实数据修正下月速率。`,
+  DEU:`联邦统计局的月度数据冷静而稳定：${meta.name}死亡持续高于出生约 34 万人每年<span class="fn">1</span>。1962-73 年婴儿潮一代正进入高死亡年龄段，缺口将继续扩大。Destatis 月度发布机制使推演精度达 5/5。`,
+  FRA:`${meta.name}曾是欧洲生育高地，如今自然增长接近归零：年出生 66 万，年死亡 65 万，自然增量仅约 1 万人<span class="fn">1</span>。INSEE 的月报里，出生数已跌至二战后最低区间。增长的故事，正在改写为持平的故事。`,
+  GBR:`ONS 季度数据显示，${meta.name}自然变动已经转负：出生约 60 万，死亡约 64.5 万<span class="fn">1</span>。账面人口仍在增长，但那完全来自净移民——自然部分的故事已经结束。季度频率使推演精度为 3/5。`,
+  KOR:`${meta.name}保持着一项无人羡慕的世界纪录：总和生育率 0.75，人类有记录以来最低<span class="fn">1</span>。统计厅月度数据显示死亡交叉逐年加深：年出生约 24 万，年死亡约 37 万。月度数据精度 5/5，让这场收缩被记录得格外清晰。`
+};
+document.getElementById('storyBody').innerHTML=
+  BODY[meta.code]+
+  `<div class="pull">${neg?`「每天净减 <span class="neg">${U.fmt(Math.abs(Math.round(day.net)))}</span> 人——相当于每天消失一个村庄。」`:`「每天净增 ${U.fmt(Math.round(day.net))} 人——但生育率已在更替水平之下。」`}</div>
+  <p>本页数字由${meta.source}（${meta.freq}）硬校准，叠加自研短期预测模型按秒推演。交叉验证：UN World Population Prospects 2024、世界银行 Population Estimates。标注「预测」的数字并非官方统计；每年官方数据发布后，推演值将被强制回代对齐。</p>`;
+
+/* 逐年数据表 */
+const rows=[...h.historical.map(r=>({y:r.year,p:r.population,b:r.birth,d:r.death,fc:false})),
+            ...h.forecast.map(r=>({y:r.year,p:r.population,b:r.birth,d:r.death,fc:true}))];
+document.getElementById('tbl').innerHTML=
+  `<tr><th>年份</th><th>年末人口</th><th>出生</th><th>死亡</th><th>自然增长</th></tr>`+
+  rows.map(r=>`<tr class="${r.fc?'fc':''}"><td>${r.y}</td><td class="mono">${U.fmt(r.p)}</td><td class="mono">${U.fmt(r.b)}</td><td class="mono">${U.fmt(r.d)}</td><td class="mono">${U.fmtSigned(r.b-r.d)}</td></tr>`).join('');
+</script>
+</body>
+</html>

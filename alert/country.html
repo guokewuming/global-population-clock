@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>红色警戒 · 国家档案</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600;800&family=Noto+Sans+SC:wght@400;700;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<style>
+  :root{--bg:#000;--panel:#0a0d12;--line:#1c2530;--red:#ff3333;--amber:#ffb020;--green:#34d399;--cyan:#2cc9ff;--txt:#e8edf2;--dim:#5b6a78}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--bg);color:var(--txt);font-family:'Noto Sans SC',sans-serif;font-size:13px;overflow-x:hidden}
+  .mono{font-family:'JetBrains Mono','Noto Sans SC',monospace}
+  a{color:inherit;text-decoration:none}
+  body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:2000;background:repeating-linear-gradient(0deg,rgba(255,255,255,.022) 0 1px,transparent 1px 3px);mix-blend-mode:overlay}
+  ::selection{background:var(--red);color:#000}
+  .neg{color:var(--red)}.pos{color:var(--green)}.warn{color:var(--amber)}
+
+  #topbar{position:sticky;top:0;z-index:100;background:rgba(0,0,0,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:16px;padding:12px 18px}
+  #topbar a{font-size:10px;letter-spacing:.28em;color:var(--dim)}
+  #topbar a:hover{color:var(--txt)}
+  #topbar h1{font-size:12px;font-weight:800;letter-spacing:.22em}
+  #topbar h1 em{font-style:normal;color:var(--red)}
+  .live{margin-left:auto;display:flex;align-items:center;gap:8px;font-size:10px;letter-spacing:.2em;color:var(--cyan)}
+  .live i{width:7px;height:7px;border-radius:50%;background:var(--cyan);animation:pulse 1.5s ease-in-out infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+
+  /* 档案头 */
+  #dossier{border-bottom:1px solid var(--line);padding:44px 5vw 38px;background:linear-gradient(180deg,#05080c,#000)}
+  #dossier .d-en{font-size:10px;letter-spacing:.5em;color:var(--dim)}
+  #dossier .d-nm{font-size:clamp(30px,4.6vw,58px);font-weight:900;letter-spacing:.24em;margin:10px 0 26px}
+  #dossier .d-nm span{color:var(--cc)}
+  .d-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1px;background:var(--line);border:1px solid var(--line)}
+  .dg{background:var(--panel);padding:20px 18px}
+  .dg .k{font-size:9px;letter-spacing:.28em;color:var(--dim);text-transform:uppercase}
+  .dg .v{margin-top:10px;font-size:24px;font-weight:300;font-variant-numeric:tabular-nums}
+  .dg .s{margin-top:8px;font-size:10px;color:#7c8b99;letter-spacing:.05em}
+  #threat{display:flex;align-items:center;gap:14px}
+  #threat .lvl{font-size:26px;font-weight:800;letter-spacing:.1em}
+  #threat .bars{display:flex;gap:3px}
+  #threat .bars i{width:14px;height:6px;background:#16202b}
+  #threat .bars i.on{background:var(--red)}
+
+  section{padding:34px 5vw;border-bottom:1px solid var(--line)}
+  .sec-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:20px}
+  .sec-head h2{font-size:11px;letter-spacing:.3em;color:var(--dim);text-transform:uppercase}
+  .sec-head .r{font-size:9px;letter-spacing:.2em;color:var(--cyan)}
+  #chart{width:100%;height:46vh;min-height:340px}
+
+  .vitals{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:1px;background:var(--line);border:1px solid var(--line)}
+  .vt{background:var(--panel);padding:18px}
+  .vt .k{font-size:9px;letter-spacing:.26em;color:var(--dim)}
+  .vt .v{margin-top:9px;font-size:19px;font-variant-numeric:tabular-nums;font-weight:400}
+  .vt .s{margin-top:7px;font-size:9.5px;color:#7c8b99}
+
+  .intel{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:18px}
+  .icard{border:1px solid var(--line);background:var(--panel);padding:18px}
+  .icard h4{font-size:10px;letter-spacing:.26em;color:var(--amber);margin-bottom:10px;text-transform:uppercase}
+  .icard p{font-size:12px;line-height:2;color:#a9b8c6}
+  .icard b{color:var(--txt)}
+
+  footer{padding:20px 5vw;font-size:10px;letter-spacing:.18em;color:var(--dim);display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px}
+</style>
+</head>
+<body>
+
+<div id="topbar">
+  <a href="index.html" class="mono">← CONSOLE</a>
+  <h1>COUNTRY DOSSIER <em>//</em> <span id="tCode">—</span></h1>
+  <span class="mono" style="font-size:8px;letter-spacing:.4em;color:var(--dim)">列侬工作室</span>
+  <div class="live"><i></i>LIVE</div>
+</div>
+
+<div id="dossier">
+  <div class="d-en mono" id="dEn">—</div>
+  <div class="d-nm"><span id="dNm">—</span> 人口档案</div>
+  <div class="d-grid">
+    <div class="dg"><div class="k">当前人口 · 实时推演</div><div class="v mono" id="dPop">—</div><div class="s" id="dPopS">—</div></div>
+    <div class="dg"><div class="k">今日净变化</div><div class="v mono" id="dNet">—</div><div class="s">自今日 00:00 起</div></div>
+    <div class="dg"><div class="k">今日出生 / 死亡</div><div class="v mono" style="font-size:19px"><span id="dB">—</span> / <span class="neg" id="dD">—</span></div><div class="s">出生 − 死亡 = 净变化</div></div>
+    <div class="dg"><div class="k">威胁评估</div><div id="threat"><span class="lvl" id="tLvl">—</span><span class="bars" id="tBars"></span></div><div class="s" id="tWhy">—</div></div>
+  </div>
+</div>
+
+<section>
+  <div class="sec-head"><h2>趋势 · 2016-2030</h2><span class="r">HISTORICAL / MODEL / UN WPP</span></div>
+  <div id="chart"></div>
+</section>
+
+<section>
+  <div class="sec-head"><h2>生命体征 · Vitals</h2><span class="r" id="vTs">—</span></div>
+  <div class="vitals" id="vitals"></div>
+</section>
+
+<section>
+  <div class="sec-head"><h2>情报摘要 · Intel</h2><span class="r">SOURCES VERIFIED</span></div>
+  <div class="intel" id="intel"></div>
+</section>
+
+<footer>
+  <span style="color:#a9b8c6">© 列侬工作室出品 · 开放学术研究 · 禁止商业使用 · 保留所有权利</span>
+  <span class="mono" id="fCode">—</span>
+</footer>
+
+<script src="../shared/data.js"></script>
+<script>
+const U=PopUtil;
+const code=new URLSearchParams(location.search).get('c')||'CHN';
+const meta=MockAPI.meta(code)||MockAPI.meta('CHN');
+document.documentElement.style.setProperty('--cc',meta.color);
+document.getElementById('tCode').textContent=meta.code;
+document.getElementById('fCode').textContent='FILE '+meta.code+' / '+meta.en;
+document.title='红色警戒 · '+meta.name;
+
+document.getElementById('dEn').textContent=meta.en+' — '+meta.source;
+document.getElementById('dNm').textContent=meta.name;
+
+function tick(){
+  const c=MockAPI.current(meta.code);
+  document.getElementById('dPop').textContent=U.fmt(c.population);
+  document.getElementById('dPopS').textContent=U.statusLabel(c.data_status)+' · 下次校准 '+c.next_official_update;
+  const n=document.getElementById('dNet');
+  n.textContent=U.fmtSigned(c.today_net);
+  n.className='v mono '+(c.today_net>=0?'pos':'neg');
+  document.getElementById('dB').textContent=U.fmt(c.today_birth);
+  document.getElementById('dD').textContent=U.fmt(c.today_death);
+  document.getElementById('vTs').textContent='UPDATED '+new Date().toLocaleTimeString('zh-CN',{hour12:false});
+}
+tick();setInterval(tick,500);
+
+/* 威胁评估 */
+const neg=meta.growthRate<0;
+const lvl=meta.precision>=4&&neg?'红色警报':neg?'高危':'观察';
+document.getElementById('tLvl').textContent=lvl;
+document.getElementById('tLvl').style.color=neg?'var(--red)':'var(--green)';
+const tb=document.getElementById('tBars');
+const score=neg?(meta.precision>=4?5:4):2;
+for(let i=0;i<5;i++){const b=document.createElement('i');if(i<score)b.className='on';tb.appendChild(b);}
+document.getElementById('tWhy').textContent=neg?`自然增长率 ${meta.growthRate}‰，人口处于减少通道`:`自然增长率 +${meta.growthRate}‰，仍在增长`;
+
+/* 图表 */
+const h=MockAPI.history(meta.code);
+const yrs=[...h.historical.map(r=>r.year),...h.forecast.map(r=>r.year)];
+const hist=h.historical.map(r=>r.population/1e8).concat(h.forecast.map(()=>null));
+const fc=h.historical.map(()=>null).concat(h.forecast.map(r=>r.population/1e8));
+fc[h.historical.length-1]=h.historical[h.historical.length-1].population/1e8;
+const un=new Array(h.historical.length).fill(null).concat(h.un_wpp.map(r=>r.population/1e8));
+un[h.historical.length-1]=h.historical[h.historical.length-1].population/1e8;
+const chart=echarts.init(document.getElementById('chart'));
+chart.setOption({
+  backgroundColor:'transparent',
+  grid:{left:64,right:24,top:26,bottom:36},
+  tooltip:{trigger:'axis',backgroundColor:'#0a0d12',borderColor:'#1c2530',textStyle:{color:'#e8edf2',fontFamily:'JetBrains Mono'}},
+  xAxis:{type:'category',data:yrs,axisLabel:{color:'#5b6a78',fontFamily:'JetBrains Mono'},axisLine:{lineStyle:{color:'#1c2530'}}},
+  yAxis:{type:'value',scale:true,axisLabel:{color:'#5b6a78',fontFamily:'JetBrains Mono',formatter:'{value}亿'},splitLine:{lineStyle:{color:'rgba(28,37,48,.6)'}}},
+  series:[
+    {name:'官方历史',type:'line',data:hist,symbol:'circle',symbolSize:4,lineStyle:{color:'#8fa3b5',width:1.6},itemStyle:{color:'#8fa3b5'}},
+    {name:'自研模型',type:'line',data:fc,symbol:'none',lineStyle:{color:meta.color,width:2,type:'dashed'},areaStyle:{color:meta.color,opacity:.08}},
+    {name:'UN WPP',type:'line',data:un,symbol:'none',lineStyle:{color:'#39434e',width:1.4,type:'dotted'}}
+  ]
+});
+addEventListener('resize',()=>chart.resize());
+
+/* 生命体征 */
+const day=MockAPI.clock(meta.code).perDay(),c0=MockAPI.current(meta.code);
+const vitals=[
+  ['日均净变化',U.fmtSigned(Math.round(day.net))+' 人',neg?'负通道':'正通道',neg?'neg':'pos'],
+  ['日均出生',U.fmt(Math.round(day.birth))+' 人','年 '+U.fmtWan(meta.annualBirth),''],
+  ['日均死亡',U.fmt(Math.round(day.death))+' 人','年 '+U.fmtWan(meta.annualDeath),'neg'],
+  ['自然增长率',meta.growthRate+' ‰',neg?'死亡交叉':'自然增长',neg?'neg':'pos'],
+  ['数据精度',meta.precision+' / 5',meta.freq,''],
+  ['置信区间',U.fmtWan(meta.confidence[0])+'—'+U.fmtWan(meta.confidence[1]),'当前推演值不确定性','warn'],
+];
+document.getElementById('vitals').innerHTML=vitals.map(v=>
+  `<div class="vt"><div class="k mono">${v[0]}</div><div class="v mono ${v[3]}">${v[1]}</div><div class="s">${v[2]}</div></div>`).join('');
+
+/* 情报 */
+document.getElementById('intel').innerHTML=`
+  <div class="icard"><h4>数据链路</h4><p><b>${meta.source}</b>（${meta.freq}）。${meta.dataStatus==='model_prediction'?'<b class="warn">当前为模型推演值</b>，等待官方发布硬校准。':'当前使用官方近实时数据，推演间隙极短。'}</p></div>
+  <div class="icard"><h4>关键动态</h4><p>${meta.note}。</p></div>
+  <div class="icard"><h4>交叉验证</h4><p>UN World Population Prospects 2024 中方案 + 世界银行 Population Estimates 用于对照；长期趋势图（至2050）以 UN WPP 为基准源。</p></div>
+  <div class="icard"><h4>诚实声明</h4><p class="warn">标注「预测」的数字不是官方统计。模型每年用实际值回代修正参数，置信区间如实展示。</p></div>`;
+</script>
+</body>
+</html>

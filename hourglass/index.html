@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>沙漏纪元 · 全球人口实时监测</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;500&family=Noto+Serif+SC:wght@400;600;900&family=Noto+Sans+SC:wght@300;400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#141210; --bg2:#1b1815; --sand:#ffca34; --cream:#f6f3ef; --dim:#8a8175;
+    --drain:#ff5a4d; --fill:#7fd08a; --bronze:#3a3227;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--bg);color:var(--cream);font-family:'Noto Sans SC',sans-serif;overflow-x:hidden;
+    background-image:radial-gradient(ellipse 90% 60% at 50% -10%,#211d18 0%,var(--bg) 60%)}
+  ::selection{background:var(--sand);color:#141210}
+  a{color:inherit;text-decoration:none}
+  .mono{font-family:'JetBrains Mono','Noto Sans SC',monospace}
+  .serif{font-family:'Noto Serif SC',serif}
+  .neg{color:var(--drain)}.pos{color:var(--fill)}
+
+  header{position:fixed;top:0;left:0;right:0;z-index:50;display:flex;justify-content:space-between;align-items:center;padding:24px 4vw;mix-blend-mode:difference}
+  header .lg{font-family:'Noto Serif SC',serif;font-weight:900;font-size:16px;letter-spacing:.4em}
+  header .tag{font-size:9px;letter-spacing:.4em;color:rgba(246,243,239,.5)}
+  header .hd-r{display:flex;align-items:center;gap:26px}
+  .chanSwitch{font-size:9px;letter-spacing:.32em;color:rgba(246,243,239,.75);border:1px solid rgba(246,243,239,.55);border-radius:999px;padding:9px 20px;transition:all .3s;white-space:nowrap;background:rgba(0,0,0,.25)}
+  .chanSwitch:hover{color:#fff;border-color:#fff}
+  @media (max-width:1180px){header .tag{display:none}}
+
+  /* ---------- 首屏：巨型沙漏剧场 ---------- */
+  #stage{min-height:100vh;display:grid;grid-template-columns:minmax(300px,44%) 1fr;align-items:center;padding:12vh 6vw 8vh;gap:4vw}
+  @media (max-width:900px){#stage{grid-template-columns:1fr;justify-items:center}}
+  #bigHgWrap{position:relative;display:flex;justify-content:center}
+  #bigHg{width:min(320px,60vw);height:min(520px,88vw);filter:drop-shadow(0 0 40px rgba(255,202,52,.12))}
+  #bigInfo .k{font-size:10px;letter-spacing:.5em;color:var(--dim)}
+  #bigInfo h1{font-family:'Noto Serif SC',serif;font-weight:900;font-size:clamp(40px,5.6vw,76px);letter-spacing:.22em;margin:16px 0 8px}
+  #bigInfo .en{font-size:10px;letter-spacing:.5em;color:var(--dim);margin-bottom:30px}
+  #bigPop{font-size:clamp(34px,4.4vw,62px);font-weight:300;font-variant-numeric:tabular-nums;line-height:1.1}
+  #bigRate{margin-top:16px;font-size:13px;letter-spacing:.14em;color:var(--dim)}
+  #bigRate b{font-variant-numeric:tabular-nums;font-weight:500}
+  #bigMeta{margin-top:30px;font-size:11px;line-height:2.2;color:var(--dim);letter-spacing:.08em}
+  #bigMeta .warn{color:#e8b64c}
+  #enterBtn{display:inline-block;margin-top:34px;border:1px solid rgba(255,202,52,.5);padding:14px 34px;font-size:11px;letter-spacing:.4em;transition:all .35s}
+  #enterBtn:hover{background:var(--sand);color:#141210}
+  .flip{transition:transform 1.2s cubic-bezier(.7,0,.2,1);transform-style:preserve-3d}
+  .flipping{transform:rotateX(180deg)}
+
+  /* ---------- 八只沙漏 ---------- */
+  #row{padding:8vh 5vw 10vh;border-top:1px solid rgba(246,243,239,.1)}
+  #row .sec-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5vh}
+  #row h2{font-family:'Noto Serif SC',serif;font-weight:900;font-size:clamp(20px,2.6vw,34px);letter-spacing:.2em}
+  #row .en{font-size:9px;letter-spacing:.4em;color:var(--dim)}
+  #hgGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:26px}
+  .hg-cell{text-align:center;cursor:pointer;transition:transform .4s}
+  .hg-cell:hover{transform:translateY(-8px)}
+  .hg-cell.sel .hg-box{border-color:var(--sand);background:rgba(255,202,52,.05)}
+  .hg-box{border:1px solid rgba(246,243,239,.1);background:var(--bg2);padding:20px 10px 14px;transition:border-color .3s,background .3s}
+  .hg-box canvas{width:100%;height:auto;display:block}
+  .hg-cell .nm{margin-top:16px;font-family:'Noto Serif SC',serif;font-weight:600;font-size:15px;letter-spacing:.24em}
+  .hg-cell .rt{margin-top:6px;font-size:10.5px;font-variant-numeric:tabular-nums;letter-spacing:.06em}
+  .hg-cell .lgnd{margin-top:4px;font-size:8.5px;letter-spacing:.2em;color:var(--dim)}
+
+  /* ---------- 图例与声明 ---------- */
+  #legend{padding:0 5vw 12vh;display:flex;gap:40px;flex-wrap:wrap;font-size:11px;color:var(--dim);letter-spacing:.1em;line-height:2.2}
+  #legend .sw{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:8px;vertical-align:middle}
+  footer{padding:40px 5vw calc(40px + 44px);border-top:1px solid rgba(246,243,239,.1);font-size:10px;letter-spacing:.2em;color:var(--dim);display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px}
+
+  /* ---------- 电讯慢带 ---------- */
+  #wireband{position:fixed;left:0;right:0;bottom:0;z-index:50;display:flex;align-items:center;gap:14px;
+    padding:0 5vw;height:34px;background:rgba(10,10,8,.82);backdrop-filter:blur(8px);
+    border-top:1px solid rgba(246,243,239,.08);font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.22em}
+  #wireband .wb-label{flex-shrink:0;color:var(--drain);display:flex;align-items:center;gap:7px}
+  #wireband .wb-label i{width:5px;height:5px;border-radius:50%;background:var(--drain);animation:wbPulse 2s ease-in-out infinite}
+  @keyframes wbPulse{0%,100%{opacity:1}50%{opacity:.25}}
+  #wireband .wb-item{color:rgba(246,243,239,.55);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    transition:opacity 1.2s ease,transform 1.2s ease}
+  #wireband .wb-item.out{opacity:0;transform:translateY(6px)}
+</style>
+</head>
+<body data-sound="hourglass">
+
+<header>
+  <span class="lg"><small class="studio">列侬工作室 出品</small>沙漏纪元</span>
+  <span class="hd-r">
+    <a class="chanSwitch mono" id="chanSwitch" href="../obituary/index.html">⇄ 切换到 人口纪事报</a>
+    <span class="tag mono">HOURGLASS EPOCH · TIME IS POPULATION</span>
+  </span>
+</header>
+
+<section id="stage">
+  <div id="bigHgWrap"><canvas id="bigHg" class="flip" width="640" height="1040"></canvas></div>
+  <div id="bigInfo">
+    <div class="k mono" id="bK">正在流逝</div>
+    <h1 class="serif" id="bNm">中国</h1>
+    <div class="en mono" id="bEn">CHINA · CHN</div>
+    <div class="mono" id="bigPop">—</div>
+    <div id="bigRate">—</div>
+    <div id="bigMeta">—</div>
+    <a id="enterBtn" href="#">翻转沙漏 · 进入该国详情</a>
+  </div>
+</section>
+
+<section id="row">
+  <div class="sec-head"><h2>八只沙漏</h2><span class="en mono">EIGHT VESSELS · 点击切换 / 进入详情</span></div>
+  <div id="hgGrid"></div>
+</section>
+
+<div id="legend">
+  <span><span class="sw" style="background:var(--drain)"></span>红沙下漏 = 人口正在流失（死亡＞出生）</span>
+  <span><span class="sw" style="background:var(--fill)"></span>绿沙上涌 = 人口仍在积聚（出生＞死亡）</span>
+  <span>流速 ∝ 该国日均净变化速率 · 数字为模型推演值</span>
+</div>
+
+<footer>
+  <span class="credit">© 列侬工作室出品 · 开放学术研究 · 禁止商业使用 · 保留所有权利</span>
+  <span>沙漏纪元 — 时间即人口</span>
+  <span class="mono">SOURCES: 各国统计局 / UN WPP 2024 / WORLD BANK</span>
+</footer>
+
+<div id="wireband"><span class="wb-label"><i></i>电讯</span><span class="wb-item" id="wbItem"></span></div>
+
+<script src="../shared/data.js"></script>
+<script src="../shared/sound.js"></script>
+<script>
+const U=PopUtil;
+
+/* ---------- 电讯慢带：7 秒淡入淡出轮换 ---------- */
+MockAPI.news().then(list=>{
+  const el=document.getElementById('wbItem');let i=0;
+  const show=()=>{el.classList.add('out');
+    setTimeout(()=>{el.textContent=list[i].text;el.classList.remove('out');i=(i+1)%list.length;},1200);};
+  el.textContent=list[0].text;i=1;setInterval(show,7000);
+});
+
+/* ---------- 沙漏绘制器 ---------- */
+function makeHourglass(canvas,code,scale){
+  const ctx=canvas.getContext('2d');
+  const W=canvas.width,H=canvas.height;
+  const meta=MockAPI.meta(code),clock=MockAPI.clock(code);
+  const day=clock.perDay();
+  const draining=day.net<0;                 // 流失 or 积聚
+  const speed=Math.min(1,Math.abs(day.net)/40000); // 归一化流速
+  const sandCol=draining?'#ff5a4d':'#7fd08a';
+
+  /* 几何：玻璃轮廓 */
+  const cx=W/2, neckY=H/2;
+  const topY=H*0.08, botY=H*0.92, halfW=W*0.34, neckW=W*0.035;
+  function glassPath(){
+    ctx.beginPath();
+    ctx.moveTo(cx-halfW,topY);
+    ctx.quadraticCurveTo(cx-halfW,neckY-H*0.14,cx-neckW,neckY);
+    ctx.quadraticCurveTo(cx-halfW,neckY+H*0.14,cx-halfW,botY);
+    ctx.lineTo(cx+halfW,botY);
+    ctx.quadraticCurveTo(cx+halfW,neckY+H*0.14,cx+neckW,neckY);
+    ctx.quadraticCurveTo(cx+halfW,neckY-H*0.14,cx+halfW,topY);
+    ctx.closePath();
+  }
+  /* 上腔沙面 y 坐标：lvl∈[0,1] → 从颈部到顶部 */
+  function upperSandY(lvl){return neckY-lvl*(neckY-topY)*0.92;}
+  function halfAt(y){ // 玻璃在高度 y 处的半宽（线性近似）
+    if(y<neckY){const t=(neckY-y)/(neckY-topY);return neckW+(halfW-neckW)*Math.pow(t,0.9);}
+    const t=(y-neckY)/(botY-neckY);return neckW+(halfW-neckW)*Math.pow(t,0.9);
+  }
+
+  let lvl=0.75, parts=[], dir=draining?1:-1, last=performance.now();
+
+  function draw(now){
+    const dt=Math.min(.05,(now-last)/1000);last=now;
+    lvl-=dir*dt*(0.02+speed*0.10);
+    if(lvl<0.06){lvl=0.75;} if(lvl>0.92){lvl=0.1;}
+    ctx.clearRect(0,0,W,H);
+
+    /* 框架 */
+    ctx.strokeStyle='#3a3227';ctx.lineWidth=W*0.045;ctx.lineCap='round';
+    ctx.beginPath();ctx.moveTo(cx-halfW-W*0.05,topY-H*0.012);ctx.lineTo(cx+halfW+W*0.05,topY-H*0.012);
+    ctx.moveTo(cx-halfW-W*0.05,botY+H*0.012);ctx.lineTo(cx+halfW+W*0.05,botY+H*0.012);ctx.stroke();
+
+    /* 玻璃 */
+    glassPath();ctx.save();ctx.clip();
+    ctx.fillStyle='rgba(246,243,239,0.035)';ctx.fillRect(0,0,W,H);
+
+    /* 上腔沙 */
+    const uy=upperSandY(lvl);
+    ctx.fillStyle=sandCol;ctx.globalAlpha=.85;
+    ctx.beginPath();ctx.moveTo(cx-halfAt(uy),uy);ctx.lineTo(cx+halfAt(uy),uy);
+    ctx.quadraticCurveTo(cx+neckW*1.4,neckY-2,cx+neckW,neckY);ctx.lineTo(cx-neckW,neckY);
+    ctx.quadraticCurveTo(cx-neckW*1.4,neckY-2,cx-halfAt(uy),uy);ctx.fill();
+
+    /* 下腔沙堆 */
+    const pile=0.75-lvl+0.06;
+    const py=botY-pile*(botY-neckY)*0.9;
+    ctx.beginPath();ctx.moveTo(cx-halfAt(py),py);
+    ctx.quadraticCurveTo(cx,py-Math.min(halfAt(py),H*0.04),cx+halfAt(py),py);
+    ctx.lineTo(cx+halfW,botY);ctx.lineTo(cx-halfW,botY);ctx.closePath();ctx.fill();
+    ctx.globalAlpha=1;ctx.restore();
+
+    /* 玻璃描边 */
+    glassPath();ctx.strokeStyle='rgba(246,243,239,.5)';ctx.lineWidth=1.5;ctx.stroke();
+
+    /* 沙流粒子 */
+    if(Math.random()<0.35+speed*0.6){
+      parts.push({x:cx+(Math.random()-.5)*neckW*1.4,y:neckY,v:dir*(H*0.5+Math.random()*H*0.3)*dt*60*0.016,l:1});
+    }
+    ctx.fillStyle=sandCol;
+    for(let i=parts.length-1;i>=0;i--){
+      const p=parts[i];p.y+=p.v*(draining?1:-1)*dt*60*0.016*60/60;
+      p.v*=1.02;
+      const done=draining?(p.y>py):(p.y<uy);
+      if(done||p.l<=0){parts.splice(i,1);continue;}
+      ctx.globalAlpha=.9;ctx.fillRect(p.x,p.y,1.6*scale,3.2*scale);ctx.globalAlpha=1;
+    }
+    requestAnimationFrame(draw);
+  }
+  requestAnimationFrame(draw);
+}
+
+/* ---------- 八只小沙漏 ---------- */
+const grid=document.getElementById('hgGrid');
+MockAPI.order.forEach(code=>{
+  const meta=MockAPI.meta(code);
+  const cell=document.createElement('div');cell.className='hg-cell';cell.dataset.code=code;
+  cell.innerHTML=`<div class="hg-box"><canvas width="220" height="360"></canvas></div>
+    <div class="nm serif">${meta.name}</div>
+    <div class="rt mono" id="rt-${code}">—</div>
+    <div class="lgnd mono">${meta.en}</div>`;
+  cell.addEventListener('click',()=>select(code));
+  cell.addEventListener('dblclick',()=>location.href=`country.html?c=${code}`);
+  grid.appendChild(cell);
+  makeHourglass(cell.querySelector('canvas'),code,1);
+});
+
+/* ---------- 主沙漏 ---------- */
+let current='CHN';
+function select(code){
+  current=code;
+  document.querySelectorAll('.hg-cell').forEach(c=>c.classList.toggle('sel',c.dataset.code===code));
+  const meta=MockAPI.meta(code),clock=MockAPI.clock(code),day=clock.perDay();
+  const draining=day.net<0;
+  document.getElementById('bK').textContent=draining?'正在流逝':'正在积聚';
+  document.getElementById('bK').style.color=draining?'var(--drain)':'var(--fill)';
+  document.getElementById('bNm').textContent=meta.name;
+  document.getElementById('bEn').textContent=meta.en+' · '+meta.code;
+  document.getElementById('bigRate').innerHTML=
+    `沙流速率 <b class="${draining?'neg':'pos'}">${U.fmtSigned(Math.round(day.net))} 人 / 日</b> · 每秒 <b class="${draining?'neg':'pos'}">${(clock.perSecond().net).toFixed(3)}</b> 人`;
+  document.getElementById('bigMeta').innerHTML=
+    `${meta.source} · ${meta.freq}<br>数据状态：<span class="warn">${U.statusLabel(meta.dataStatus)}</span> · 精度 ${meta.precision}/5<br>下次官方校准：${meta.nextOfficialUpdate}`;
+  document.getElementById('enterBtn').href=`country.html?c=${code}`;
+}
+select('CHN');
+
+const bigCanvas=document.getElementById('bigHg');
+let bigHg=makeHourglass(bigCanvas,current,2.2);
+/* 切换国家时：翻转动画 + 重建沙漏 */
+function rebuildBig(){
+  bigCanvas.classList.add('flipping');
+  setTimeout(()=>{
+    const ctx=bigCanvas.getContext('2d');ctx.clearRect(0,0,bigCanvas.width,bigCanvas.height);
+    makeHourglass(bigCanvas,current,2.2);
+    bigCanvas.classList.remove('flipping');
+  },600);
+}
+grid.addEventListener('click',()=>rebuildBig());
+
+/* ---------- 实时数字 ---------- */
+function tick(){
+  const c=MockAPI.current(current);
+  document.getElementById('bigPop').textContent=U.fmt(c.population);
+  MockAPI.order.forEach(code=>{
+    const d=MockAPI.clock(code).perDay();
+    const el=document.getElementById('rt-'+code);
+    el.textContent=U.fmtSigned(Math.round(d.net))+' /日';
+    el.className='rt mono '+(d.net>=0?'pos':'neg');
+  });
+}
+tick();setInterval(tick,400);
+</script>
+</body>
+</html>

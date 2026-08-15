@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>红色警戒 · 全球人口危机监控</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600;800&family=Noto+Sans+SC:wght@400;700;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<style>
+  :root{
+    --bg:#000; --panel:#0a0d12; --line:#1c2530;
+    --red:#ff3333; --amber:#ffb020; --green:#34d399; --cyan:#2cc9ff;
+    --txt:#e8edf2; --dim:#5b6a78;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--bg);color:var(--txt);font-family:'Noto Sans SC',sans-serif;font-size:13px;overflow-x:hidden}
+  .mono{font-family:'JetBrains Mono','Noto Sans SC',monospace}
+  a{color:inherit;text-decoration:none}
+  /* 扫描线 + 噪点 */
+  body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:2000;
+    background:repeating-linear-gradient(0deg,rgba(255,255,255,.022) 0 1px,transparent 1px 3px);mix-blend-mode:overlay}
+  ::selection{background:var(--red);color:#000}
+  ::-webkit-scrollbar{width:6px;height:6px}
+  ::-webkit-scrollbar-thumb{background:#22303d}
+  ::-webkit-scrollbar-track{background:#05080c}
+
+  .up{letter-spacing:.16em;text-transform:uppercase}
+
+  /* ---------- 顶栏 ---------- */
+  #topbar{position:sticky;top:0;z-index:100;background:rgba(0,0,0,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+  #topbar .row1{display:flex;align-items:center;gap:16px;padding:10px 18px}
+  .lights{display:flex;gap:6px}
+  .lights i{width:9px;height:9px;border-radius:50%}
+  .lights i:nth-child(1){background:var(--red)}
+  .lights i:nth-child(2){background:var(--amber)}
+  .lights i:nth-child(3){background:var(--green)}
+  #topbar h1{font-size:13px;font-weight:800;letter-spacing:.22em}
+  #topbar h1 em{font-style:normal;color:var(--red)}
+  .live{margin-left:auto;display:flex;align-items:center;gap:8px;font-size:10px;letter-spacing:.2em;color:var(--cyan);border:1px solid rgba(44,201,255,.35);padding:5px 12px}
+  .live i{width:7px;height:7px;border-radius:50%;background:var(--cyan);animation:pulse 1.5s ease-in-out infinite}
+  @keyframes pulse{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(44,201,255,.5)}50%{opacity:.4;box-shadow:0 0 0 6px rgba(44,201,255,0)}}
+  #clock{font-size:11px;color:var(--dim);font-variant-numeric:tabular-nums}
+
+  /* ---------- 警报滚动带 ---------- */
+  #tickerWrap{border-top:1px solid var(--line);overflow:hidden;background:#0d0406;white-space:nowrap}
+  #ticker{display:inline-block;padding:9px 0;animation:tick 48s linear infinite;font-size:11px;letter-spacing:.1em}
+  #tickerWrap:hover #ticker{animation-play-state:paused}
+  @keyframes tick{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+  #ticker .t-item{margin:0 34px;color:#c96}
+  #ticker .t-item b{color:var(--red);font-weight:600}
+  #ticker .t-item .g{color:var(--green)}
+  #ticker .sep{color:#3a2020}
+
+  /* ---------- 三栏 ---------- */
+  #main{display:grid;grid-template-columns:280px 1fr 380px;gap:1px;background:var(--line);border-bottom:1px solid var(--line);min-height:calc(100vh - 96px)}
+  .col{background:var(--panel);padding:18px}
+  .col h3{font-size:10px;letter-spacing:.28em;color:var(--dim);text-transform:uppercase;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+  .col h3::before{content:'';width:6px;height:6px;background:var(--red)}
+
+  /* 左栏：观察名单 */
+  .watch{display:flex;align-items:center;gap:12px;padding:11px 10px;border:1px solid transparent;border-bottom:1px solid var(--line);cursor:pointer;transition:background .15s}
+  .watch:hover{background:#0e1420}
+  .radar-node{width:16px;height:16px;border-radius:50%;border:1px solid var(--dim);position:relative;flex-shrink:0;transition:border-color .2s}
+  .watch.on .radar-node{border-color:var(--cc)}
+  .watch.on .radar-node::after{content:'';position:absolute;inset:4px;border-radius:50%;background:var(--cc);animation:pulse 1.6s ease-in-out infinite}
+  .watch .w-nm{font-size:13px;font-weight:700;letter-spacing:.08em}
+  .watch .w-en{font-size:9px;letter-spacing:.2em;color:var(--dim)}
+  .watch .w-net{margin-left:auto;font-size:11px;font-variant-numeric:tabular-nums}
+  .neg{color:var(--red)}.pos{color:var(--green)}
+  #layerNote{margin-top:18px;font-size:10px;line-height:2;color:var(--dim);letter-spacing:.06em}
+  .gauge{margin-top:22px;border:1px solid var(--line);padding:16px}
+  .gauge .g-cap{font-size:9px;letter-spacing:.3em;color:var(--dim)}
+  .gauge .g-val{margin-top:10px;font-size:30px;font-weight:300;font-variant-numeric:tabular-nums}
+  .gauge .bars{display:flex;gap:3px;margin-top:12px}
+  .gauge .bars i{flex:1;height:5px;background:#16202b}
+  .gauge .bars i.on{background:var(--red)}
+
+  /* 中栏：地图 */
+  #mapCol{background:#020507;position:relative;display:flex;flex-direction:column}
+  #mapHead{display:flex;justify-content:space-between;align-items:center;padding:14px 18px 0}
+  #mapHead .mh-l{font-size:10px;letter-spacing:.3em;color:var(--dim)}
+  #mapHead .mh-r{font-size:10px;color:var(--cyan);letter-spacing:.15em}
+  #map{flex:1;min-height:420px}
+  #map svg{width:100%;height:100%}
+  .grat{fill:none;stroke:rgba(44,201,255,.07);stroke-width:.5}
+  .land{fill:#0c1520;stroke:#1c2530;stroke-width:.4}
+  .beacon{cursor:pointer}
+  .beacon .core{animation:blink 1.6s ease-in-out infinite}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.35}}
+  .beacon text{font-family:'JetBrains Mono';font-size:9px;fill:#8fa3b5;letter-spacing:.1em}
+  #mapFallback{flex:1;display:none;align-items:center;justify-content:center;color:var(--dim);font-size:11px;letter-spacing:.2em}
+  /* 全球巨数条 */
+  #globalStrip{display:flex;gap:1px;background:var(--line);border-top:1px solid var(--line)}
+  #globalStrip .gs{flex:1;background:#04070b;padding:14px 18px}
+  #globalStrip .gs .k{font-size:9px;letter-spacing:.28em;color:var(--dim)}
+  #globalStrip .gs .v{margin-top:8px;font-size:22px;font-weight:300;font-variant-numeric:tabular-nums}
+
+  /* 右栏：警报流 */
+  .alert-card{border-left:3px solid var(--ac,#888);background:#0c1017;padding:12px 14px;margin-bottom:10px;animation:slideIn .5s ease}
+  @keyframes slideIn{from{opacity:0;transform:translateX(14px)}to{opacity:1;transform:none}}
+  .alert-card .a-top{display:flex;justify-content:space-between;font-size:9px;letter-spacing:.2em;color:var(--dim)}
+  .alert-card .a-tt{margin-top:7px;font-size:12.5px;font-weight:700;line-height:1.6}
+  .alert-card .a-dt{margin-top:6px;font-size:10.5px;color:#93a3b3;line-height:1.8}
+  .alert-card .a-dt b{font-variant-numeric:tabular-nums}
+  .sev-CRITICAL{--ac:var(--red)} .sev-WARNING{--ac:var(--amber)} .sev-INFO{--ac:var(--cyan)} .sev-SIGNAL{--ac:var(--green)}
+
+  /* ---------- 底部图表面板 ---------- */
+  #chartsSec{padding:26px 0 10px}
+  #chartsSec h3{padding:0 18px;font-size:10px;letter-spacing:.28em;color:var(--dim);text-transform:uppercase;margin-bottom:14px}
+  #chartRail{display:flex;gap:14px;overflow-x:auto;padding:0 18px 18px;scroll-snap-type:x mandatory}
+  .cpanel{flex:0 0 46%;min-width:420px;scroll-snap-align:start;background:var(--panel);border:1px solid var(--line)}
+  .cpanel .c-head{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid var(--line)}
+  .cpanel .c-head b{font-size:12px;letter-spacing:.12em}
+  .cpanel .c-head span{font-size:9px;letter-spacing:.2em;color:var(--dim)}
+  .cpanel .c-body{height:180px}
+  @media (max-width:1100px){#main{grid-template-columns:1fr}.cpanel{flex-basis:88%}}
+
+  #infoGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1px;background:var(--line);border-top:1px solid var(--line)}
+  .ib{background:var(--panel);padding:22px}
+  .ib h4{font-size:10px;letter-spacing:.28em;color:var(--dim);text-transform:uppercase;margin-bottom:14px}
+  .ib table{width:100%;border-collapse:collapse;font-size:11px}
+  .ib td{padding:7px 0;border-bottom:1px dashed #141d27;color:#a9b8c6}
+  .ib td:last-child{text-align:right;font-variant-numeric:tabular-nums}
+  .prec{display:inline-flex;gap:2px}
+  .prec i{width:8px;height:8px;background:#16202b}
+  .prec i.on{background:var(--cyan)}
+
+  footer{padding:22px 18px;font-size:10px;letter-spacing:.18em;color:var(--dim);border-top:1px solid var(--line);display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px}
+</style>
+</head>
+<body>
+
+<div id="topbar">
+  <div class="row1">
+    <div class="lights"><i></i><i></i><i></i></div>
+    <h1>POPULATION CRISIS <em>//</em> 红色警戒</h1>
+    <a href="../index.html" class="mono" style="font-size:9px;letter-spacing:.3em;color:var(--dim);text-decoration:none;transition:color .3s" onmouseover="this.style.color='#f6f3ef'" onmouseout="this.style.color='var(--dim)'">‹ 总览</a>
+    <span class="mono" style="font-size:8px;letter-spacing:.4em;color:var(--dim)">列侬工作室</span>
+    <div class="live"><i></i>LIVE MONITOR</div>
+    <div id="clock" class="mono">—</div>
+  </div>
+  <div id="tickerWrap"><div id="ticker" class="mono"></div></div>
+</div>
+
+<div id="main">
+  <!-- 左栏 -->
+  <aside class="col">
+    <h3>观察名单 · Watchlist</h3>
+    <div id="watchlist"></div>
+    <div class="gauge mono">
+      <div class="g-cap">全球危机指数 · CRISIS INDEX</div>
+      <div class="g-val" id="crisisVal">—</div>
+      <div class="bars" id="crisisBars"></div>
+    </div>
+    <p id="layerNote">勾选国家以在地图上点亮信标。红色呼吸灯 = 人口自然减少；绿色 = 自然增长。指数 = 负增长国家数 / 监测国家数 × 100。</p>
+  </aside>
+
+  <!-- 中栏 -->
+  <div id="mapCol">
+    <div id="mapHead">
+      <span class="mh-l">THEATRE GRID · 全球战区</span>
+      <span class="mh-r" id="mapStat">SAT-LINK OK</span>
+    </div>
+    <div id="map"></div>
+    <div id="mapFallback">MAP OFFLINE — 信标列表模式</div>
+    <div id="globalStrip">
+      <div class="gs"><div class="k">全球总人口</div><div class="v mono" id="gTotal">—</div></div>
+      <div class="gs"><div class="k">今日净增</div><div class="v mono pos" id="gNet">—</div></div>
+      <div class="gs"><div class="k">今日出生</div><div class="v mono" id="gB">—</div></div>
+      <div class="gs"><div class="k">今日死亡</div><div class="v mono neg" id="gD">—</div></div>
+    </div>
+  </div>
+
+  <!-- 右栏 -->
+  <aside class="col">
+    <h3>实时警报 · Alerts</h3>
+    <div id="alerts"></div>
+  </aside>
+</div>
+
+<section id="chartsSec">
+  <h3>趋势面板 · 横向拖动</h3>
+  <div id="chartRail"></div>
+</section>
+
+<div id="infoGrid">
+  <div class="ib"><h4>数据精度分级</h4><table id="precTbl"></table></div>
+  <div class="ib"><h4>下次官方校准</h4><table id="calTbl"></table></div>
+  <div class="ib"><h4>数据源</h4><table id="srcTbl"></table></div>
+</div>
+
+<footer>
+  <span style="color:#a9b8c6">© 列侬工作室出品 · 开放学术研究 · 禁止商业使用 · 保留所有权利</span>
+  <span>所有数字为模型推演，已与官方年度数据硬校准</span>
+  <span class="mono">GRID REF: WGS84 / UN WPP 2024 CROSS-CHECK</span>
+</footer>
+
+<script src="../shared/data.js"></script>
+<script>
+const U=PopUtil;
+const ISO={CHN:'156',IND:'356',USA:'840',JPN:'392',DEU:'276',FRA:'250',GBR:'826',KOR:'410'};
+
+/* ---------- 时钟 ---------- */
+setInterval(()=>{document.getElementById('clock').textContent=new Date().toLocaleString('zh-CN',{hour12:false});},1000);
+
+/* ---------- 警报滚动带 ---------- */
+const alerts=[
+  ['CRITICAL','JPN','人口连续第16年减少 · 65岁以上占比29.4% 全球最高'],
+  ['CRITICAL','CHN','2025年出生792万 死亡1131万 · 自然增长率-2.41‰'],
+  ['CRITICAL','KOR','总和生育率0.75 全球最低 · 死亡交叉持续加深'],
+  ['WARNING','DEU','死亡连续高于出生 · 年度自然减少约34万人'],
+  ['WARNING','GBR','自然变动转负 · 人口增长完全依赖移民'],
+  ['WARNING','FRA','自然增长接近归零 · 出生人口二战后最低区间'],
+  ['INFO','USA','CDC季度数据：自然增长约+25万/年 · 增速放缓'],
+  ['SIGNAL','IND','仍为全球增长引擎 · 日均净增约+38,800人'],
+];
+const tickerHTML=alerts.map(a=>{
+  const m=MockAPI.meta(a[1]);
+  const d=MockAPI.clock(a[1]).perDay();
+  return `<span class="t-item"><b>[${a[0]}]</b> ${m.en} — ${a[2]} · 净 <b class="${d.net>=0?'g':''}">${U.fmtSigned(Math.round(d.net))}/日</b></span><span class="sep">///</span>`;
+}).join('');
+document.getElementById('ticker').innerHTML=tickerHTML+tickerHTML;
+
+/* ---------- 观察名单 ---------- */
+const wl=document.getElementById('watchlist');const active=new Set(MockAPI.order);
+MockAPI.order.forEach(code=>{
+  const c=MockAPI.meta(code),d=MockAPI.clock(code).perDay();
+  const el=document.createElement('a');
+  el.className='watch on';el.style.setProperty('--cc',c.color);
+  el.innerHTML=`<span class="radar-node"></span><span><span class="w-nm">${c.name}</span><br><span class="w-en mono">${c.en}</span></span><span class="w-net mono ${d.net>=0?'pos':'neg'}">${U.fmtSigned(Math.round(d.net))}/日</span>`;
+  el.addEventListener('click',e=>{e.preventDefault();
+    if(active.has(code)){active.delete(code);el.classList.remove('on');}else{active.add(code);el.classList.add('on');}
+    drawBeacons();});
+  wl.appendChild(el);
+});
+
+/* ---------- 危机指数 ---------- */
+const negCount=MockAPI.order.filter(c=>MockAPI.meta(c).growthRate<0).length;
+const idx=Math.round(negCount/MockAPI.order.length*100);
+document.getElementById('crisisVal').textContent=idx;
+const bars=document.getElementById('crisisBars');
+for(let i=0;i<20;i++){const b=document.createElement('i');if(i<idx/5)b.className='on';bars.appendChild(b);}
+
+/* ---------- 全球巨数 ---------- */
+const g=MockAPI.globalClock();
+function tickGlobal(){
+  const t=g.today();
+  document.getElementById('gTotal').textContent=U.fmt(g.current());
+  document.getElementById('gNet').textContent=U.fmtSigned(Math.floor(t.net));
+  document.getElementById('gB').textContent=U.fmt(Math.floor(t.birth));
+  document.getElementById('gD').textContent=U.fmt(Math.floor(t.death));
+}
+tickGlobal();setInterval(tickGlobal,500);
+
+/* ---------- 地图 ---------- */
+let projection,path,svg,beaconLayer;
+function initMap(){
+  const el=document.getElementById('map');
+  const w=el.clientWidth,h=el.clientHeight;
+  svg=d3.select(el).append('svg').attr('viewBox',`0 0 ${w} ${h}`);
+  projection=d3.geoNaturalEarth1().fitSize([w,h],{type:'Sphere'});
+  path=d3.geoPath(projection);
+  svg.append('path').attr('class','grat').attr('d',path(d3.geoGraticule10()));
+  fetch('https://unpkg.com/world-atlas@2.0.2/countries-110m.json')
+    .then(r=>r.json()).then(topo=>{
+      svg.insert('path',':first-child').datum(topojson.feature(topo,topo.objects.land))
+        .attr('class','land').attr('d',path);
+      beaconLayer=svg.append('g');
+      drawBeacons();
+    }).catch(()=>{
+      document.getElementById('map').style.display='none';
+      document.getElementById('mapFallback').style.display='flex';
+      document.getElementById('mapStat').textContent='SAT-LINK LOST';
+    });
+}
+function drawBeacons(){
+  if(!beaconLayer)return;
+  beaconLayer.selectAll('*').remove();
+  MockAPI.order.forEach(code=>{
+    if(!active.has(code))return;
+    const c=MockAPI.meta(code);
+    /* 用简化经纬度定位信标 */
+    const LL={CHN:[104,35],IND:[78,22],USA:[-98,39],JPN:[138,37],DEU:[10,51],FRA:[2,47],GBR:[-2,54],KOR:[128,36]}[code];
+    const p=projection(LL);if(!p)return;
+    /* 标签错位，避免东亚/欧洲信标扎堆 */
+    const LB={CHN:[14,-14],JPN:[16,4],KOR:[-14,16,'end'],DEU:[12,-10],FRA:[12,16],GBR:[-12,-8,'end'],IND:[14,0],USA:[14,0]}[code];
+    const neg=c.growthRate<0,col=neg?'var(--red)':'var(--green)';
+    const grp=beaconLayer.append('g').attr('class','beacon')
+      .on('click',()=>location.href=`country.html?c=${code}`);
+    grp.append('circle').attr('cx',p[0]).attr('cy',p[1]).attr('r',10)
+      .attr('fill','none').attr('stroke',col).attr('stroke-width',1).attr('opacity',.6)
+      .append('animate').attr('attributeName','r').attr('values','6;16;6').attr('dur','2.4s').attr('repeatCount','indefinite');
+    grp.append('circle').attr('class','core').attr('cx',p[0]).attr('cy',p[1]).attr('r',3.5).attr('fill',col);
+    grp.append('text').attr('x',p[0]+LB[0]).attr('y',p[1]+LB[1]).attr('text-anchor',LB[2]||'start').text(c.en);
+  });
+}
+initMap();
+
+/* ---------- 警报流（右栏，周期性重排模拟实时） ---------- */
+const detailAlerts=[
+  ['CRITICAL','CHN','出生人口连续第9年下降','2024年结婚登记610.6万对（-20.5%），1980年以来最低，提前9-10个月压制出生。'],
+  ['CRITICAL','JPN','月度动态显示死亡持续放大','总务省月度数据：年死亡约160万 vs 出生约70万，缺口93万/年。'],
+  ['CRITICAL','KOR','0.75：人类有记录以来最低生育率','统计厅月度人口动态：年死亡约37万 vs 出生约24万。'],
+  ['WARNING','DEU','联邦统计局：死亡缺口约34万/年','Destatis月度数据，1962-73婴儿潮一代进入高死亡年龄段。'],
+  ['WARNING','GBR','ONS季度：自然变动转负','出生约60万 < 死亡约64.5万，增长完全依赖净移民。'],
+  ['WARNING','FRA','INSEE：出生降至二战后最低区间','自然增长接近归零，年自然增量仅约+1万。'],
+  ['INFO','USA','CDC临时数据：自然增长收窄','2025Q1 出生869,334 / 死亡829,935，季度净增约+3.9万。'],
+  ['SIGNAL','IND','唯一仍在高速增长的监测国','年净增约+1,410万，但生育率已降至更替水平以下。'],
+];
+function renderAlerts(){
+  const box=document.getElementById('alerts');
+  box.innerHTML=detailAlerts.map(a=>`
+    <div class="alert-card sev-${a[0]}">
+      <div class="a-top mono"><span>${a[0]} // ${MockAPI.meta(a[1]).en}</span><span>${new Date().toLocaleTimeString('zh-CN',{hour12:false})}</span></div>
+      <div class="a-tt">${a[2]}</div>
+      <div class="a-dt">${a[3]}</div>
+    </div>`).join('');
+}
+renderAlerts();
+
+/* ---------- 底部趋势面板 ---------- */
+const rail=document.getElementById('chartRail');
+MockAPI.order.forEach(code=>{
+  const c=MockAPI.meta(code);
+  const p=document.createElement('div');p.className='cpanel';
+  p.innerHTML=`<div class="c-head"><b><a href="country.html?c=${code}">${c.name} ${c.en}</a></b><span class="mono">2016-2030 · 实线历史 / 虚线预测</span></div><div class="c-body" id="ch-${code}"></div>`;
+  rail.appendChild(p);
+});
+requestAnimationFrame(()=>{
+  MockAPI.order.forEach(code=>{
+    const c=MockAPI.meta(code),h=MockAPI.history(code);
+    const yrs=[...h.historical.map(r=>r.year),...h.forecast.map(r=>r.year)];
+    const hist=h.historical.map(r=>r.population/1e6).concat(h.forecast.map(()=>null));
+    const fc=h.historical.map(()=>null).concat(h.forecast.map(r=>r.population/1e6));
+    fc[h.historical.length-1]=h.historical[h.historical.length-1].population/1e6;
+    echarts.init(document.getElementById('ch-'+code)).setOption({
+      backgroundColor:'transparent',animationDuration:900,
+      grid:{left:52,right:14,top:12,bottom:24},
+      xAxis:{type:'category',data:yrs,axisLabel:{color:'#5b6a78',fontFamily:'JetBrains Mono',fontSize:9},axisLine:{lineStyle:{color:'#1c2530'}}},
+      yAxis:{type:'value',scale:true,axisLabel:{color:'#5b6a78',fontFamily:'JetBrains Mono',fontSize:9,formatter:'{value}M'},splitLine:{lineStyle:{color:'rgba(28,37,48,.5)'}}},
+      series:[
+        {type:'line',data:hist,symbol:'none',lineStyle:{color:'#8fa3b5',width:1.5}},
+        {type:'line',data:fc,symbol:'none',lineStyle:{color:c.color,width:1.5,type:'dashed'},areaStyle:{color:c.color,opacity:.07}}
+      ]
+    });
+  });
+});
+
+/* ---------- 信息表 ---------- */
+document.getElementById('precTbl').innerHTML=MockAPI.order.map(code=>{
+  const c=MockAPI.meta(code);
+  return `<tr><td>${c.name}</td><td><span class="prec">${Array.from({length:5},(_,i)=>`<i class="${i<c.precision?'on':''}"></i>`).join('')}</span></td></tr>`;
+}).join('');
+document.getElementById('calTbl').innerHTML=MockAPI.order.map(code=>{
+  const c=MockAPI.meta(code);
+  return `<tr><td>${c.name} · ${c.freq}</td><td class="mono">${c.nextOfficialUpdate}</td></tr>`;
+}).join('');
+document.getElementById('srcTbl').innerHTML=MockAPI.order.map(code=>{
+  const c=MockAPI.meta(code);
+  return `<tr><td>${c.name}</td><td style="text-align:right">${c.source}</td></tr>`;
+}).join('');
+</script>
+</body>
+</html>

@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="全球人口时钟：基于公开年度数据与模型的动态估算演示。">
+  <title>全球人口时钟｜模型估算</title>
+  <style>
+    :root{--ink:#eaf2ff;--muted:#90a4c6;--panel:rgba(13,28,55,.78);--line:rgba(159,190,235,.18);--accent:#73e3c1;--red:#ff8090;--blue:#78adff}*{box-sizing:border-box}body{margin:0;color:var(--ink);font-family:ui-sans-serif,-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft Yahei",sans-serif;background:#061124;background-image:radial-gradient(circle at 7% 5%,#164674 0,transparent 28rem),radial-gradient(circle at 85% 18%,#352166 0,transparent 30rem);min-height:100vh}.wrap{max-width:1160px;margin:auto;padding:30px 22px 48px}.top{display:flex;justify-content:space-between;align-items:start;gap:20px}.eyebrow{color:var(--accent);font-size:12px;letter-spacing:.16em;font-weight:700}.top h1{font-size:clamp(30px,5vw,51px);margin:8px 0}.sub{margin:0;color:var(--muted);line-height:1.6}.live{border:1px solid #3d786d;border-radius:999px;padding:9px 13px;font-size:12px;color:#b9ffe7;white-space:nowrap}.live i{display:inline-block;background:#73e3c1;width:7px;height:7px;border-radius:50%;margin-right:6px;box-shadow:0 0 12px #73e3c1}.hero{margin-top:28px;padding:30px;border:1px solid var(--line);border-radius:24px;background:linear-gradient(125deg,rgba(19,51,89,.86),rgba(9,20,47,.72));overflow:hidden}.hero label,.tiny{color:var(--muted);font-size:13px}.number{font-variant-numeric:tabular-nums;font-size:clamp(41px,8vw,88px);font-weight:800;letter-spacing:-.045em;margin:12px 0 8px}.delta{color:var(--accent);font-size:16px}.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:15px;margin-top:16px}.card{border:1px solid var(--line);background:var(--panel);padding:20px;border-radius:18px}.card .value{font-size:29px;font-weight:750;margin-top:7px;font-variant-numeric:tabular-nums}.green{color:var(--accent)}.red{color:var(--red)}.countries{display:grid;grid-template-columns:1.15fr .85fr;gap:16px;margin-top:16px}.panel{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:22px}.panel h2{font-size:17px;margin:0 0 17px}.country{display:grid;grid-template-columns:32px 1fr auto;align-items:center;gap:10px;padding:13px 0;border-top:1px solid var(--line)}.country:first-of-type{border-top:0}.rank{color:var(--muted);font-size:13px}.name b{display:block}.name span{font-size:12px;color:var(--muted)}.pop{text-align:right;font-weight:700;font-variant-numeric:tabular-nums}.rate{font-size:12px;margin-top:4px}.chart{height:215px;display:flex;align-items:flex-end;gap:10px;padding-top:15px;border-bottom:1px solid var(--line)}.bar{flex:1;min-width:15px;border-radius:5px 5px 0 0;background:linear-gradient(#78adff,#3964c3);position:relative}.bar span{position:absolute;bottom:-25px;font-size:10px;color:var(--muted);left:50%;transform:translateX(-50%)}.note{margin-top:16px;border-left:3px solid #f5c451;background:rgba(245,196,81,.08);padding:14px 16px;color:#d9e3f3;font-size:13px;line-height:1.65;border-radius:0 12px 12px 0}.foot{color:var(--muted);font-size:12px;line-height:1.7;margin-top:20px}@media(max-width:720px){.wrap{padding:21px 15px 35px}.top{display:block}.live{display:inline-block;margin-top:16px}.hero{padding:22px}.cards,.countries{grid-template-columns:1fr}.number{font-size:47px}.card{padding:16px}}
+  </style>
+</head>
+<body><main class="wrap">
+  <header class="top"><div><div class="eyebrow">GLOBAL POPULATION CLOCK · PUBLIC DEMO</div><h1>全球人口时钟</h1><p class="sub">以公开年度基准数据为起点的动态推演。每一位数字都是模型估算，而非实时官方统计。</p></div><div class="live"><i></i>本地模型运行中</div></header>
+  <section class="hero"><label>全球人口 · 估算值</label><div id="global" class="number">—</div><div id="globalDelta" class="delta">—</div><div class="tiny" id="timestamp"></div></section>
+  <section class="cards"><div class="card"><div class="tiny">今日估算出生</div><div id="births" class="value green">—</div></div><div class="card"><div class="tiny">今日估算死亡</div><div id="deaths" class="value red">—</div></div><div class="card"><div class="tiny">今日净变化</div><div id="net" class="value green">—</div></div></section>
+  <section class="countries"><div class="panel"><h2>主要国家 / 地区 · 模型估算</h2><div id="countryList"></div></div><div class="panel"><h2>人口规模对比</h2><div id="chart" class="chart"></div><p class="foot">展示为相对规模；国家值以各自基准日及年净变化参数连续推演。</p></div></section>
+  <aside class="note"><b>数据说明：</b>这是产品原型的公开演示。全球与各国数字由固定基准人口和年出生、死亡参数进行浏览器端计算；并非官方实时数据，也不构成统计、投资或政策依据。</aside>
+  <footer class="foot">数据方法：年度基准 + 日内线性插值（演示版）。计划数据参考：UN DESA World Population Prospects、各国官方统计机构与世界银行。<br>本页面不收集个人信息，不含登录、表单、追踪脚本或外部接口。</footer>
+</main>
+<script>
+const base=new Date('2026-01-01T00:00:00Z').getTime();
+const data=[
+ {rank:1,name:'印度',code:'IND',pop:1463000000,birth:23000000,death:10500000},
+ {rank:2,name:'中国',code:'CHN',pop:1404890000,birth:7920000,death:11310000},
+ {rank:3,name:'美国',code:'USA',pop:341800000,birth:3700000,death:3300000},
+ {rank:4,name:'印度尼西亚',code:'IDN',pop:285000000,birth:4400000,death:1800000},
+ {rank:5,name:'日本',code:'JPN',pop:122930000,birth:700000,death:1600000}
+];
+const global={pop:8230000000,birth:132000000,death:63000000};
+const year=365.25*86400000, today=new Date();
+function value(d){return Math.round(d.pop+(today.getTime()-base)*(d.birth-d.death)/year)}
+function n(v){return new Intl.NumberFormat('zh-CN').format(v)}
+const gp=value(global), sec=(today.getTime()-new Date(today.getFullYear(),today.getMonth(),today.getDate()).getTime())/1000;
+document.querySelector('#global').textContent=n(gp);
+document.querySelector('#globalDelta').textContent='今年模型净增约 '+n(global.birth-global.death)+' 人';
+document.querySelector('#timestamp').textContent='估算时间：'+today.toLocaleString('zh-CN',{hour12:false})+'（设备本地时间）';
+document.querySelector('#births').textContent=n(Math.round(sec*global.birth/(365.25*86400)))+' 人';
+document.querySelector('#deaths').textContent=n(Math.round(sec*global.death/(365.25*86400)))+' 人';
+document.querySelector('#net').textContent=(global.birth>global.death?'+':'')+n(Math.round(sec*(global.birth-global.death)/(365.25*86400)))+' 人';
+document.querySelector('#countryList').innerHTML=data.map(d=>{let net=d.birth-d.death;return `<div class="country"><div class="rank">${d.rank}</div><div class="name"><b>${d.name}</b><span>${d.code} · 年净变化</span></div><div class="pop">${n(value(d))}<div class="rate ${net>=0?'green':'red'}">${net>=0?'+':''}${n(net)} / 年</div></div></div>`}).join('');
+const max=Math.max(...data.map(value));document.querySelector('#chart').innerHTML=data.map(d=>`<div class="bar" style="height:${Math.max(8,value(d)/max*100)}%"><span>${d.name}</span></div>`).join('');
+setInterval(()=>location.reload(),60000);
+</script></body></html>
